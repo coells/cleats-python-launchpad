@@ -1,0 +1,142 @@
+{
+    "name": "cleats-python-launchpad",
+    "displayName": "Cleats: Python Launchpad",
+    "description": "Run and debug the current or last Python file with minimal setup.",
+    "version": "0.1.0",
+    "publisher": "tomasbouda",
+    "author": "Tomas Bouda",
+    "license": "MIT",
+    "type": "module",
+    "main": "./out/src/extension.js",
+    "engines": {
+        "vscode": "^1.105.0"
+    },
+    "categories": [
+        "Debuggers",
+        "Other"
+    ],
+    "keywords": [
+        "python",
+        "run",
+        "debug",
+        "launch",
+        "productivity"
+    ],
+    "extensionDependencies": [
+        "ms-python.python"
+    ],
+    "contributes": {
+        "commands": [
+            {
+                "command": "cleatsPythonLaunchpad.debugCurrentFile",
+                "title": "Cleats: Python Launchpad - Debug Current File"
+            },
+            {
+                "command": "cleatsPythonLaunchpad.runCurrentFile",
+                "title": "Cleats: Python Launchpad - Run Current File"
+            },
+            {
+                "command": "cleatsPythonLaunchpad.debugLastFile",
+                "title": "Cleats: Python Launchpad - Debug Last File"
+            },
+            {
+                "command": "cleatsPythonLaunchpad.runLastFile",
+                "title": "Cleats: Python Launchpad - Run Last File"
+            },
+            {
+                "command": "cleatsPythonLaunchpad.removeManagedTargetConfigurations",
+                "title": "Cleats: Python Launchpad - Remove Managed Target Configurations"
+            }
+        ],
+        "keybindings": [
+            {
+                "command": "cleatsPythonLaunchpad.debugCurrentFile",
+                "key": "ctrl+shift+d",
+                "mac": "ctrl+shift+d",
+                "when": "editorTextFocus"
+            },
+            {
+                "command": "cleatsPythonLaunchpad.runCurrentFile",
+                "key": "ctrl+shift+r",
+                "mac": "ctrl+shift+r",
+                "when": "editorTextFocus"
+            },
+            {
+                "command": "cleatsPythonLaunchpad.debugLastFile",
+                "key": "ctrl+d",
+                "mac": "ctrl+d"
+            },
+            {
+                "command": "cleatsPythonLaunchpad.runLastFile",
+                "key": "ctrl+r",
+                "mac": "ctrl+r"
+            }
+        ],
+        "configuration": {
+            "title": "Cleats: Python Launchpad",
+            "properties": {
+                "cleatsPythonLaunchpad.runCommandTemplate": {
+                    "type": "string",
+                    "default": "uv run python {script}",
+                    "description": "Default script run command template used to initialize launch.json managed template entries. Supported placeholders: {script}, {workspaceFolder}, {fileDirname}, {fileBasename}, {testTarget}, {testFunction}, {pytestTarget}, {pytestFunction}."
+                },
+                "cleatsPythonLaunchpad.pytestCommandTemplate": {
+                    "type": "string",
+                    "default": "uv run pytest {pytestTarget}",
+                    "description": "Run command template used when Cleats detects a pytest file and pytest is the configured Python test framework. Supported placeholders: {script}, {workspaceFolder}, {fileDirname}, {fileBasename}, {testTarget}, {testFunction}, {pytestTarget}, {pytestFunction}."
+                },
+                "cleatsPythonLaunchpad.unittestCommandTemplate": {
+                    "type": "string",
+                    "default": "uv run python -m unittest {testTarget}",
+                    "description": "Run command template used when Cleats detects a test file and unittest is the configured Python test framework. Supported placeholders: {script}, {workspaceFolder}, {fileDirname}, {fileBasename}, {testTarget}, {testFunction}, {pytestTarget}, {pytestFunction}."
+                },
+                "cleatsPythonLaunchpad.generatedLaunchNamePrefix": {
+                    "type": "string",
+                    "default": "Launchpad",
+                    "description": "Prefix used for launch.json entries managed by Cleats: Python Launchpad."
+                },
+                "cleatsPythonLaunchpad.launchWorkspaceFolder": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Optional workspace folder name or absolute folder path whose launch.json Cleats should manage in multi-root workspaces. Empty means use the Python file's own workspace folder."
+                },
+                "cleatsPythonLaunchpad.runOpenNewTerminalIfBusy": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "When enabled, run commands open a new terminal if another Cleats run is still active."
+                },
+                "cleatsPythonLaunchpad.terminalReveal": {
+                    "type": "string",
+                    "enum": [
+                        "always",
+                        "silent",
+                        "never"
+                    ],
+                    "default": "always",
+                    "description": "Controls when the integrated terminal is revealed for run commands."
+                }
+            }
+        }
+    },
+    "scripts": {
+        "clean": "rimraf out",
+        "vscode:prepublish": "npm run compile",
+        "compile": "npm run clean && tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "lint": "eslint src test --ext .ts",
+        "test": "npm run compile && node --test out/test/suite/**/*.test.js",
+        "ci": "npm run lint && npm run test",
+        "package": "vsce package --no-dependencies --allow-missing-repository"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.38.0",
+        "@types/node": "^22.17.1",
+        "@types/vscode": "^1.105.0",
+        "@typescript-eslint/eslint-plugin": "^8.46.2",
+        "@typescript-eslint/parser": "^8.46.2",
+        "@vscode/vsce": "^3.6.0",
+        "eslint": "^9.38.0",
+        "rimraf": "^6.0.1",
+        "typescript": "^5.9.3"
+    }
+}
