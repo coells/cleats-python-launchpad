@@ -1,3 +1,4 @@
+import { URL, fileURLToPath } from "node:url";
 import * as vscode from "vscode";
 
 import {
@@ -11,6 +12,20 @@ import {
     buildCommandTemplateContext,
     expandCommandTemplate,
 } from "./commandTemplate.js";
+
+const RUN_WITH_SUMMARY_RUNTIME_PATH = fileURLToPath(new URL("./runWithSummaryRuntime.js", import.meta.url));
+
+function buildNodeRuntimeEnvironment(): Record<string, string> {
+    const env: Record<string, string> = {};
+    for (const [key, value] of Object.entries(process.env)) {
+        if (typeof value === "string") {
+            env[key] = value;
+        }
+    }
+
+    env.ELECTRON_RUN_AS_NODE = "1";
+    return env;
+}
 
 function mapReveal(value: TerminalRevealSetting): vscode.TaskRevealKind {
     switch (value) {
@@ -45,6 +60,14 @@ export async function runPythonTarget(
     const openNewTerminal = runOpenNewTerminalIfBusy && hasActiveCleatsRunTask(target.filePath);
     const taskName = openNewTerminal ? `Run ${target.fileBasename} (${Date.now()})` : `Run ${target.fileBasename}`;
     const commandLine = expandCommandTemplate(commandTemplate, buildCommandTemplateContext(target, contextOverrides));
+    const execution = new vscode.ProcessExecution(
+        process.execPath,
+        [RUN_WITH_SUMMARY_RUNTIME_PATH, target.fileBasename, commandLine],
+        {
+            cwd: target.fileDirname,
+            env: buildNodeRuntimeEnvironment(),
+        },
+    );
     const task = new vscode.Task(
         {
             type: EXTENSION_NAMESPACE,
@@ -54,9 +77,7 @@ export async function runPythonTarget(
         target.workspaceFolder,
         taskName,
         TASK_SOURCE_LABEL,
-        new vscode.ShellExecution(commandLine, {
-            cwd: target.fileDirname,
-        }),
+        execution,
     );
 
     task.presentationOptions = {

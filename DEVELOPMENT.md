@@ -35,13 +35,18 @@ Smoke test flow:
 - Releases are manual.
 - The authoritative Copilot-facing checklist lives in `.github/copilot-instructions.md`.
 - Before packaging, verify `package.json` release metadata (for example `version` and `icon`).
+- Maintain packaging rules in `.vscodeignore` as the single source of truth for VSIX file inclusion.
+- Do not combine `.vscodeignore` with `package.json` `files` filtering; VSCE rejects that combination.
 - Recommended release flow:
 
 ```sh
 npm ci
 npm run ci
 npm run package
+npx @vscode/vsce ls --tree
 ```
+
+- Review `npx @vscode/vsce ls --tree` output to confirm release bundles only runtime artifacts (README, icon/media, license, `package.json`, and compiled `out/src`).
 
 - Publish the tested VSIX from a local shell:
 

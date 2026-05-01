@@ -23,6 +23,7 @@ Opening Python scripts quickly is easy, but consistent run/debug ergonomics acro
 - Auto-detects test files (`test*.py`, `*_test.py`) and routes them to pytest or unittest using Python extension test settings.
 - In test files, `Run Current File` runs only the current function or method when the cursor is inside one, otherwise the whole module target.
 - In test files, `Debug Current File` debugs only the current function or method when the cursor is inside one, otherwise the whole module target.
+- Prints a terminal summary tail after each run with outcome, exit code, and runtime (green for success, red for failure).
 - Creates and updates only extension-managed debug configurations.
 - Preserves user-managed launch configurations untouched.
 
@@ -97,6 +98,13 @@ When you run or debug with Cleats, the extension manages two launch entries unde
 Use `Remove Managed Target Configurations` to delete all managed target entries while preserving user-defined entries and the managed template entry.
 
 ## Release History
+
+### 0.1.1 (2026-05-01)
+
+- Added terminal-tail run summaries, including exit code and runtime for every run.
+- Added ANSI coloring for terminal-tail summaries (green success, red failure).
+- Removed status bar run lifecycle messages in favor of terminal-native completion output.
+- Tightened VSIX packaging via `.vscodeignore` to keep publish artifacts runtime-focused.
 
 ### 0.1.0 (2026-04-25)
 
