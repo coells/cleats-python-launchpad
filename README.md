@@ -28,12 +28,12 @@ Opening Python scripts quickly is easy, but consistent run/debug ergonomics acro
 
 ## Default Keybindings
 
-Default shortcuts use Ctrl on all platforms:
+Default shortcuts use Ctrl key combinations on all platforms:
 
-- Debug Current File: `Ctrl+Shift+D`
-- Run Current File: `Ctrl+Shift+R`
-- Debug Last File: `Ctrl+D`
-- Run Last File: `Ctrl+R`
+- Debug Current File: `Ctrl+Shift+F9`
+- Run Current File: `Ctrl+Shift+F10`
+- Debug Last File: `Ctrl+F9`
+- Run Last File: `Ctrl+F10`
 
 ## Validation Rules
 
@@ -96,72 +96,6 @@ When you run or debug with Cleats, the extension manages two launch entries unde
 
 Use `Remove Managed Target Configurations` to delete all managed target entries while preserving user-defined entries and the managed template entry.
 
-## Development
-
-Install and validate:
-
-```sh
-npm install
-npm run ci
-```
-
-## Debugging In VS Code
-
-Launch profiles in `.vscode/launch.json`:
-
-- `Run Extension (Build Once)`
-- `Run Extension (Watch)`
-
-Useful tasks in `.vscode/tasks.json`:
-
-- `npm: compile`
-- `npm: watch`
-- `npm: lint`
-- `npm: test`
-- `npm: package`
-
-Smoke test flow:
-
-1. Run `Run Extension (Watch)`.
-2. Open a Python file in the Extension Development Host.
-3. Execute `Run Current File` and `Debug Current File`.
-4. Switch file and verify `Run Last File` and `Debug Last File` use the expected target.
-
-## Python Samples
-
-Sample scripts for quick smoke tests live in `python-samples/src`:
-
-- `hello.py`
-- `print_argv.py`
-- `cwd_sensitive.py`
-- `fail.py`
-- `test_launchpad_samples.py`
-
-To prepare sample dependencies:
-
-```sh
-cd python-samples
-uv sync
-```
-
-## Release Process
-
-- Releases are manual.
-- The authoritative Copilot-facing checklist lives in `.github/copilot-instructions.md`.
-- Recommended release flow:
-
-```sh
-npm ci
-npm run ci
-npm run package
-```
-
-- Publish the tested VSIX from a local shell:
-
-```sh
-npx @vscode/vsce publish --packagePath ./cleats-python-launchpad-X.Y.Z.vsix
-```
-
 ## Release History
 
 ### 0.1.0 (2026-04-25)
@@ -170,3 +104,5 @@ npx @vscode/vsce publish --packagePath ./cleats-python-launchpad-X.Y.Z.vsix
 - Added run/debug commands for current and last Python file targets.
 - Added managed debug configuration generation and update flow.
 - Added unit tests for command template expansion and launch config handling.
+- Added a resized extension icon asset for Marketplace/package metadata.
+- Updated development docs for release metadata checks.

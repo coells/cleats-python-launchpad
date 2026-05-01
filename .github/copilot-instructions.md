@@ -98,25 +98,11 @@ Short description of the release and target users.
 
 ### Highlights
 
-- Item 1
-- Item 2
-- Item 3
-
-### Added
-
--
-
-### Changed
-
--
-
-### Fixed
-
 -
 
 ### Configuration or Behavior Notes
 
-- Mention changed command behavior, settings defaults, and migration notes.
+- Mention changed settings, defaults, matching behavior, and migration notes.
 ```
 
 ### Validation
