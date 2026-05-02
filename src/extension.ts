@@ -12,14 +12,15 @@ function getSettings() {
     const configuration = vscode.workspace.getConfiguration(EXTENSION_NAMESPACE);
     return {
         generatedLaunchNamePrefix: configuration.get<string>("generatedLaunchNamePrefix", "Launchpad"),
-        launchWorkspaceFolder: configuration.get<string>("launchWorkspaceFolder", ""),
-        runCommandTemplate: configuration.get<string>("runCommandTemplate", "uv run python {script}"),
-        pytestCommandTemplate: configuration.get<string>("pytestCommandTemplate", "uv run pytest {pytestTarget}"),
-        unittestCommandTemplate: configuration.get<string>(
-            "unittestCommandTemplate",
-            "uv run python -m unittest {testTarget}",
+        launchJsonPath: configuration.get<string>("launchJsonPath", ""),
+        managedTargetConfigurationLimit: Math.max(
+            1,
+            Math.floor(configuration.get<number>("managedTargetConfigurationLimit", 10)),
         ),
+        runCommandTemplate: configuration.get<string>("runCommandTemplate", "python {script}"),
+        testCommandTemplate: configuration.get<string>("testCommandTemplate", "python -m pytest {testTarget}"),
         runOpenNewTerminalIfBusy: configuration.get<boolean>("runOpenNewTerminalIfBusy", true),
+        debugOpenNewTerminalIfBusy: configuration.get<boolean>("debugOpenNewTerminalIfBusy", true),
         terminalReveal: configuration.get<TerminalRevealSetting>("terminalReveal", "always"),
     };
 }
@@ -33,12 +34,12 @@ export function activate(context: vscode.ExtensionContext): void {
             await runCurrentFile(
                 lastTargetStore,
                 settings.runCommandTemplate,
-                settings.pytestCommandTemplate,
-                settings.unittestCommandTemplate,
+                settings.testCommandTemplate,
                 settings.terminalReveal,
                 settings.generatedLaunchNamePrefix,
                 settings.runOpenNewTerminalIfBusy,
-                settings.launchWorkspaceFolder,
+                settings.launchJsonPath,
+                settings.managedTargetConfigurationLimit,
             );
         }),
         vscode.commands.registerCommand("cleatsPythonLaunchpad.runLastFile", async () => {
@@ -46,12 +47,12 @@ export function activate(context: vscode.ExtensionContext): void {
             await runLastFile(
                 lastTargetStore,
                 settings.runCommandTemplate,
-                settings.pytestCommandTemplate,
-                settings.unittestCommandTemplate,
+                settings.testCommandTemplate,
                 settings.terminalReveal,
                 settings.generatedLaunchNamePrefix,
                 settings.runOpenNewTerminalIfBusy,
-                settings.launchWorkspaceFolder,
+                settings.launchJsonPath,
+                settings.managedTargetConfigurationLimit,
             );
         }),
         vscode.commands.registerCommand("cleatsPythonLaunchpad.debugCurrentFile", async () => {
@@ -59,8 +60,9 @@ export function activate(context: vscode.ExtensionContext): void {
             await debugCurrentFile(
                 lastTargetStore,
                 settings.generatedLaunchNamePrefix,
-                settings.runCommandTemplate,
-                settings.launchWorkspaceFolder,
+                settings.launchJsonPath,
+                settings.managedTargetConfigurationLimit,
+                settings.debugOpenNewTerminalIfBusy,
             );
         }),
         vscode.commands.registerCommand("cleatsPythonLaunchpad.debugLastFile", async () => {
@@ -68,8 +70,9 @@ export function activate(context: vscode.ExtensionContext): void {
             await debugLastFile(
                 lastTargetStore,
                 settings.generatedLaunchNamePrefix,
-                settings.runCommandTemplate,
-                settings.launchWorkspaceFolder,
+                settings.launchJsonPath,
+                settings.managedTargetConfigurationLimit,
+                settings.debugOpenNewTerminalIfBusy,
             );
         }),
         vscode.commands.registerCommand("cleatsPythonLaunchpad.removeManagedTargetConfigurations", async () => {

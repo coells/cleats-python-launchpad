@@ -3,8 +3,8 @@ import type * as vscode from "vscode";
 import type { ResolvedPythonTarget } from "../types.js";
 
 export interface PytestTargetSelection {
-    pytestFunction: string;
-    pytestTarget: string;
+    testFunction: string;
+    testTarget: string;
 }
 
 interface ParsedScope {
@@ -100,8 +100,8 @@ export function resolvePytestTargetFromSource(
 
     if (functionIndex === -1) {
         return {
-            pytestFunction: "",
-            pytestTarget: filePath,
+            testFunction: "",
+            testTarget: filePath,
         };
     }
 
@@ -112,8 +112,8 @@ export function resolvePytestTargetFromSource(
         .map((scope) => scope.name);
 
     return {
-        pytestFunction: functionScope.name,
-        pytestTarget: [filePath, ...classNames, functionScope.name].join("::"),
+        testFunction: functionScope.name,
+        testTarget: [filePath, ...classNames, functionScope.name].join("::"),
     };
 }
 
@@ -126,8 +126,8 @@ export function resolvePytestTargetForPosition(
 ): PytestTargetSelection {
     if (!position) {
         return {
-            pytestFunction: "",
-            pytestTarget: target.filePath,
+            testFunction: "",
+            testTarget: target.filePath,
         };
     }
 

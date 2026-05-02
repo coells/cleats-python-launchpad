@@ -17,8 +17,8 @@ void test("resolveUnittestTargetFromSource returns file target outside functions
     const source = ["import unittest", "", "VALUE = 1"].join("\n");
     const result = resolveUnittestTargetFromSource(target, source, 2);
 
-    assert.equal(result.pytestFunction, "");
-    assert.equal(result.pytestTarget, "/workspace/tests/test_math.py");
+    assert.equal(result.testFunction, "");
+    assert.equal(result.testTarget, "/workspace/tests/test_math.py");
     assert.equal(result.unittestFilter, undefined);
 });
 
@@ -43,8 +43,8 @@ void test("resolveUnittestTargetFromSource returns dotted module target for meth
 
     const result = resolveUnittestTargetFromSource(target, source, 5);
 
-    assert.equal(result.pytestFunction, "TestMath.test_subtraction");
-    assert.equal(result.pytestTarget, "tests.test_math.TestMath.test_subtraction");
+    assert.equal(result.testFunction, "TestMath.test_subtraction");
+    assert.equal(result.testTarget, "tests.test_math.TestMath.test_subtraction");
     assert.equal(result.unittestFilter, undefined);
 });
 
@@ -62,7 +62,7 @@ void test("resolveUnittestTargetFromSource falls back to file target for non-mod
 
     const result = resolveUnittestTargetFromSource(target, source, 2);
 
-    assert.equal(result.pytestFunction, "TestMath.test_addition");
-    assert.equal(result.pytestTarget, "/workspace/python-samples/tests/test_math.py");
+    assert.equal(result.testFunction, "TestMath.test_addition");
+    assert.equal(result.testTarget, "/workspace/python-samples/tests/test_math.py");
     assert.equal(result.unittestFilter, "TestMath.test_addition");
 });

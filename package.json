@@ -2,7 +2,7 @@
     "name": "cleats-python-launchpad",
     "displayName": "Cleats: Python Launchpad",
     "description": "Run and debug the current or last Python file with minimal setup.",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "publisher": "coells",
     "author": "Tomas Bouda",
     "license": "MIT",
@@ -76,35 +76,41 @@
         "configuration": {
             "title": "Cleats: Python Launchpad",
             "properties": {
-                "cleatsPythonLaunchpad.runCommandTemplate": {
-                    "type": "string",
-                    "default": "uv run python {script}",
-                    "description": "Default script run command template used to initialize launch.json managed template entries. Supported placeholders: {script}, {workspaceFolder}, {fileDirname}, {fileBasename}, {testTarget}, {testFunction}, {pytestTarget}, {pytestFunction}."
-                },
-                "cleatsPythonLaunchpad.pytestCommandTemplate": {
-                    "type": "string",
-                    "default": "uv run pytest {pytestTarget}",
-                    "description": "Run command template used when Cleats detects a pytest file and pytest is the configured Python test framework. Supported placeholders: {script}, {workspaceFolder}, {fileDirname}, {fileBasename}, {testTarget}, {testFunction}, {pytestTarget}, {pytestFunction}."
-                },
-                "cleatsPythonLaunchpad.unittestCommandTemplate": {
-                    "type": "string",
-                    "default": "uv run python -m unittest {testTarget}",
-                    "description": "Run command template used when Cleats detects a test file and unittest is the configured Python test framework. Supported placeholders: {script}, {workspaceFolder}, {fileDirname}, {fileBasename}, {testTarget}, {testFunction}, {pytestTarget}, {pytestFunction}."
-                },
                 "cleatsPythonLaunchpad.generatedLaunchNamePrefix": {
                     "type": "string",
                     "default": "Launchpad",
                     "description": "Prefix used for launch.json entries managed by Cleats: Python Launchpad."
                 },
-                "cleatsPythonLaunchpad.launchWorkspaceFolder": {
+                "cleatsPythonLaunchpad.runCommandTemplate": {
+                    "type": "string",
+                    "default": "python {script}",
+                    "description": "Run command template used for non-test Python files. Supported placeholders: {script}, {workspaceFolder}, {fileDirname}, {fileBasename}, {testTarget}, {testFunction}."
+                },
+                "cleatsPythonLaunchpad.testCommandTemplate": {
+                    "type": "string",
+                    "default": "python -m pytest {testTarget}",
+                    "description": "Run command template used when Cleats detects a test file (pytest or unittest). Supported placeholders: {script}, {workspaceFolder}, {fileDirname}, {fileBasename}, {testTarget}, {testFunction}."
+                },
+                "cleatsPythonLaunchpad.launchJsonPath": {
                     "type": "string",
                     "default": "",
-                    "description": "Optional workspace folder name or absolute folder path whose launch.json Cleats should manage in multi-root workspaces. Empty means use the Python file's own workspace folder."
+                    "description": "Optional path to the launch.json file Cleats should manage in multi-root workspaces. You can provide an absolute path to launch.json or a folder path (which maps to <folder>/.vscode/launch.json). Empty means use the Python file's own workspace folder."
+                },
+                "cleatsPythonLaunchpad.managedTargetConfigurationLimit": {
+                    "type": "number",
+                    "minimum": 1,
+                    "default": 10,
+                    "description": "Maximum number of managed Launchpad target configurations to keep in launch.json per workspace folder. When exceeded, the oldest managed targets are removed while preserving user-managed configurations and the managed template."
                 },
                 "cleatsPythonLaunchpad.runOpenNewTerminalIfBusy": {
                     "type": "boolean",
                     "default": true,
                     "description": "When enabled, run commands open a new terminal if another Cleats run is still active."
+                },
+                "cleatsPythonLaunchpad.debugOpenNewTerminalIfBusy": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "When enabled, debug commands try to open a separate terminal session if a matching Cleats debug target is already active."
                 },
                 "cleatsPythonLaunchpad.terminalReveal": {
                     "type": "string",

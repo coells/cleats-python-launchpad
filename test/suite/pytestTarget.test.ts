@@ -14,8 +14,8 @@ void test("resolvePytestTargetFromSource returns file target outside functions",
 
     const result = resolvePytestTargetFromSource("/workspace/tests/test_math.py", source, 2);
 
-    assert.equal(result.pytestFunction, "");
-    assert.equal(result.pytestTarget, "/workspace/tests/test_math.py");
+    assert.equal(result.testFunction, "");
+    assert.equal(result.testTarget, "/workspace/tests/test_math.py");
 });
 
 void test("resolvePytestTargetFromSource returns function target", () => {
@@ -23,8 +23,8 @@ void test("resolvePytestTargetFromSource returns function target", () => {
 
     const result = resolvePytestTargetFromSource("/workspace/tests/test_math.py", source, 2);
 
-    assert.equal(result.pytestFunction, "test_addition");
-    assert.equal(result.pytestTarget, "/workspace/tests/test_math.py::test_addition");
+    assert.equal(result.testFunction, "test_addition");
+    assert.equal(result.testTarget, "/workspace/tests/test_math.py::test_addition");
 });
 
 void test("resolvePytestTargetFromSource returns class method target", () => {
@@ -39,6 +39,6 @@ void test("resolvePytestTargetFromSource returns class method target", () => {
 
     const result = resolvePytestTargetFromSource("/workspace/tests/test_math.py", source, 5);
 
-    assert.equal(result.pytestFunction, "test_subtraction");
-    assert.equal(result.pytestTarget, "/workspace/tests/test_math.py::TestMath::test_subtraction");
+    assert.equal(result.testFunction, "test_subtraction");
+    assert.equal(result.testTarget, "/workspace/tests/test_math.py::TestMath::test_subtraction");
 });

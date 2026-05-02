@@ -12,24 +12,19 @@ import type { TerminalRevealSetting } from "../types.js";
 export async function runCurrentFile(
     lastTargetStore: LastTargetStore,
     scriptCommandTemplate: string,
-    pytestCommandTemplate: string,
-    unittestCommandTemplate: string,
+    testCommandTemplate: string,
     terminalReveal: TerminalRevealSetting,
     generatedLaunchNamePrefix: string,
     runOpenNewTerminalIfBusy: boolean,
-    launchWorkspaceFolder: string,
+    launchJsonPath: string,
+    managedTargetConfigurationLimit: number,
 ): Promise<void> {
     const target = await resolveActivePythonTarget();
     if (!target) {
         return;
     }
 
-    const managed = await ensureManagedLaunchConfig(
-        target,
-        generatedLaunchNamePrefix,
-        scriptCommandTemplate,
-        launchWorkspaceFolder,
-    );
+    await ensureManagedLaunchConfig(target, generatedLaunchNamePrefix, launchJsonPath, managedTargetConfigurationLimit);
 
     const testFramework = isTestFile(target.fileBasename)
         ? (resolveConfiguredTestFramework(target) ?? "pytest")
@@ -40,34 +35,32 @@ export async function runCurrentFile(
 
         await lastTargetStore.set(target, {
             testFramework,
-            testFunction: pytestSelection.pytestFunction,
-            testTarget: pytestSelection.pytestTarget,
+            testFunction: pytestSelection.testFunction,
+            testTarget: pytestSelection.testTarget,
         });
-        await runPythonTarget(target, pytestCommandTemplate, terminalReveal, runOpenNewTerminalIfBusy, pytestSelection);
+        await runPythonTarget(target, testCommandTemplate, terminalReveal, runOpenNewTerminalIfBusy, {
+            testFunction: pytestSelection.testFunction,
+            testTarget: pytestSelection.testTarget,
+        });
         return;
     }
 
     if (testFramework === "unittest") {
         const activePosition = vscode.window.activeTextEditor?.selection.active;
         const unittestSelection = resolveUnittestTargetForPosition(target, activePosition);
-        const unittestTemplate = unittestSelection.unittestFilter
-            ? `${unittestCommandTemplate} -k {testFunction}`
-            : unittestCommandTemplate;
 
         await lastTargetStore.set(target, {
             testFramework,
-            testFunction: unittestSelection.pytestFunction,
-            testTarget: unittestSelection.pytestTarget,
+            testFunction: unittestSelection.testFunction,
+            testTarget: unittestSelection.testTarget,
         });
-        await runPythonTarget(target, unittestTemplate, terminalReveal, runOpenNewTerminalIfBusy, {
-            pytestFunction: unittestSelection.pytestFunction,
-            pytestTarget: unittestSelection.pytestTarget,
-            testFunction: unittestSelection.unittestFilter ?? unittestSelection.pytestFunction,
-            testTarget: unittestSelection.pytestTarget,
+        await runPythonTarget(target, testCommandTemplate, terminalReveal, runOpenNewTerminalIfBusy, {
+            testFunction: unittestSelection.unittestFilter ?? unittestSelection.testFunction,
+            testTarget: unittestSelection.testTarget,
         });
         return;
     }
 
     await lastTargetStore.set(target);
-    await runPythonTarget(target, managed.runCommandTemplate, terminalReveal, runOpenNewTerminalIfBusy);
+    await runPythonTarget(target, scriptCommandTemplate, terminalReveal, runOpenNewTerminalIfBusy);
 }

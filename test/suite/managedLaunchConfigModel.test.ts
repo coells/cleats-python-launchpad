@@ -77,7 +77,7 @@ void test("upsertManagedLaunchConfig replaces only the matching managed config",
             cwd: "${workspaceFolder}",
             justMyCode: false,
             env: {
-                CLEATS_PYTHON_LAUNCHPAD_RUN_COMMAND_TEMPLATE: "python {script}",
+                PYTHONPATH: "/workspace/src",
             },
             subProcess: true,
             presentation: {
@@ -87,10 +87,9 @@ void test("upsertManagedLaunchConfig replaces only the matching managed config",
         },
     ];
 
-    const updated = upsertManagedLaunchConfig(existing, descriptor, "Launchpad", "uv run python {script}");
+    const updated = upsertManagedLaunchConfig(existing, descriptor, "Launchpad");
 
     assert.equal(updated.configurations.length, 4);
-    assert.equal(updated.runCommandTemplate, "python {script}");
     assert.equal(updated.debugConfig.cwd, "${workspaceFolder}");
     assert.equal(updated.debugConfig.justMyCode, false);
     assert.equal((updated.debugConfig as Record<string, unknown>).subProcess, true);
@@ -140,16 +139,12 @@ void test("upsertManagedLaunchConfig replaces only the matching managed config",
         "env",
         "presentation",
     ]);
-    assert.equal(
-        (updatedTemplate.env as Record<string, unknown> | undefined)?.CLEATS_PYTHON_LAUNCHPAD_RUN_COMMAND_TEMPLATE,
-        "python {script}",
-    );
+    assert.equal((updatedTemplate.env as Record<string, unknown> | undefined)?.PYTHONPATH, "/workspace/src");
 });
 
-void test("upsertManagedLaunchConfig seeds run template from defaults when missing", () => {
-    const updated = upsertManagedLaunchConfig([], descriptor, "Launchpad", "uv run python {script}");
+void test("upsertManagedLaunchConfig creates managed template when missing", () => {
+    const updated = upsertManagedLaunchConfig([], descriptor, "Launchpad");
 
-    assert.equal(updated.runCommandTemplate, "uv run python {script}");
     assert.ok(
         updated.configurations.some(
             (item: unknown) =>
@@ -164,8 +159,7 @@ void test("upsertManagedLaunchConfig seeds run template from defaults when missi
             item &&
             typeof item === "object" &&
             (item as { name?: string }).name === getManagedRunTemplateName("Launchpad"),
-    ) as { env?: Record<string, unknown>; presentation?: Record<string, unknown> };
-    assert.equal(runTemplate.env?.CLEATS_PYTHON_LAUNCHPAD_RUN_COMMAND_TEMPLATE, "uv run python {script}");
+    ) as { presentation?: Record<string, unknown> };
     assert.deepEqual(runTemplate.presentation, {
         group: "Launchpad",
         hidden: true,
@@ -187,7 +181,7 @@ void test("getManagedLaunchName shortens long paths while keeping filename reada
 });
 
 void test("upsertManagedLaunchConfig emits managed entries with readable key order", () => {
-    const updated = upsertManagedLaunchConfig([], descriptor, "Launchpad", "uv run python {script}");
+    const updated = upsertManagedLaunchConfig([], descriptor, "Launchpad");
 
     const runTemplate = updated.configurations.find(
         (item: unknown) =>
@@ -204,7 +198,6 @@ void test("upsertManagedLaunchConfig emits managed entries with readable key ord
         "cwd",
         "console",
         "justMyCode",
-        "env",
         "presentation",
     ]);
 
@@ -301,7 +294,7 @@ void test("upsertManagedLaunchConfig appends target configuration at the end", (
         },
     ];
 
-    const updated = upsertManagedLaunchConfig(existing, descriptor, "Launchpad", "uv run python {script}");
+    const updated = upsertManagedLaunchConfig(existing, descriptor, "Launchpad");
     const names = updated.configurations.map((item) => item.name);
 
     assert.deepEqual(names, [
@@ -310,5 +303,96 @@ void test("upsertManagedLaunchConfig appends target configuration at the end", (
         "Launchpad: another.py",
         "User last",
         getManagedLaunchName(descriptor, "Launchpad"),
+    ]);
+});
+
+void test("upsertManagedLaunchConfig keeps existing target position when re-running same target", () => {
+    const existingName = getManagedLaunchName(descriptor, "Launchpad");
+    const existing = [
+        {
+            name: getManagedRunTemplateName("Launchpad"),
+            type: "debugpy",
+            request: "launch",
+            program: "${file}",
+            presentation: {
+                group: "Launchpad",
+                hidden: true,
+            },
+        },
+        {
+            name: "User first",
+            type: "debugpy",
+            request: "launch",
+            program: "${file}",
+        },
+        {
+            name: existingName,
+            type: "debugpy",
+            request: "launch",
+            program: "/workspace/old/path.py",
+            presentation: {
+                group: "Launchpad",
+            },
+        },
+        {
+            name: "User last",
+            type: "debugpy",
+            request: "launch",
+            program: "${workspaceFolder}/app.py",
+        },
+    ];
+
+    const updated = upsertManagedLaunchConfig(existing, descriptor, "Launchpad");
+    const names = updated.configurations.map((item) => item.name);
+
+    assert.deepEqual(names, [getManagedRunTemplateName("Launchpad"), "User first", existingName, "User last"]);
+});
+
+void test("upsertManagedLaunchConfig trims oldest managed targets when limit is exceeded", () => {
+    const existing = [
+        {
+            name: getManagedRunTemplateName("Launchpad"),
+            type: "debugpy",
+            request: "launch",
+            program: "${file}",
+            presentation: {
+                group: "Launchpad",
+                hidden: true,
+            },
+        },
+        {
+            name: "Launchpad: tests/test_a.py",
+            type: "debugpy",
+            request: "launch",
+            program: "/workspace/tests/test_a.py",
+            presentation: {
+                group: "Launchpad",
+            },
+        },
+        {
+            name: "Launchpad: tests/test_b.py",
+            type: "debugpy",
+            request: "launch",
+            program: "/workspace/tests/test_b.py",
+            presentation: {
+                group: "Launchpad",
+            },
+        },
+    ];
+
+    const nextDescriptor = {
+        ...descriptor,
+        filePath: "/workspace/tests/test_c.py",
+        workspaceRelativePath: "tests/test_c.py",
+    };
+
+    const updated = upsertManagedLaunchConfig(existing, nextDescriptor, "Launchpad", 2);
+    const names = updated.configurations.map((item) => item.name);
+
+    assert.equal(names.includes("Launchpad: tests/test_a.py"), false);
+    assert.deepEqual(names, [
+        getManagedRunTemplateName("Launchpad"),
+        "Launchpad: tests/test_b.py",
+        getManagedLaunchName(nextDescriptor, "Launchpad"),
     ]);
 });

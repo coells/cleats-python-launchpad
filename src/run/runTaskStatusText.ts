@@ -4,10 +4,20 @@ const RESET = "\u001b[0m";
 
 export function formatRuntime(elapsedMilliseconds: number): string {
     const totalSeconds = Math.max(0, Math.floor(elapsedMilliseconds / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
+    const minutesRemainder = minutes % 60;
 
-    return `${minutes.toString().padStart(2, "0")}m${seconds.toString().padStart(2, "0")}s`;
+    if (hours > 0) {
+        return `${hours}h ${minutesRemainder}m ${seconds}s`;
+    }
+
+    if (minutes > 0) {
+        return `${minutes}m ${seconds}s`;
+    }
+
+    return `${seconds}s`;
 }
 
 export function buildRunSummaryLine(

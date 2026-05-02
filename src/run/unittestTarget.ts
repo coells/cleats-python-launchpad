@@ -5,8 +5,8 @@ import type * as vscode from "vscode";
 import type { ResolvedPythonTarget } from "../types.js";
 
 export interface UnittestTargetSelection {
-    pytestFunction: string;
-    pytestTarget: string;
+    testFunction: string;
+    testTarget: string;
     unittestFilter?: string;
 }
 
@@ -128,23 +128,23 @@ export function resolveUnittestTargetFromSource(
     const scopeChain = resolveScopeChain(source, cursorLine);
     if (scopeChain.length === 0) {
         return {
-            pytestFunction: "",
-            pytestTarget: target.filePath,
+            testFunction: "",
+            testTarget: target.filePath,
         };
     }
 
     const modulePath = toModulePath(target);
     if (!modulePath) {
         return {
-            pytestFunction: scopeChain.join("."),
-            pytestTarget: target.filePath,
+            testFunction: scopeChain.join("."),
+            testTarget: target.filePath,
             unittestFilter: scopeChain.join("."),
         };
     }
 
     return {
-        pytestFunction: scopeChain.join("."),
-        pytestTarget: `${modulePath}.${scopeChain.join(".")}`,
+        testFunction: scopeChain.join("."),
+        testTarget: `${modulePath}.${scopeChain.join(".")}`,
     };
 }
 
@@ -154,8 +154,8 @@ export function resolveUnittestTargetForPosition(
 ): UnittestTargetSelection {
     if (!position) {
         return {
-            pytestFunction: "",
-            pytestTarget: target.filePath,
+            testFunction: "",
+            testTarget: target.filePath,
         };
     }
 

@@ -10,12 +10,12 @@ import type { TerminalRevealSetting } from "../types.js";
 export async function runLastFile(
     lastTargetStore: LastTargetStore,
     scriptCommandTemplate: string,
-    pytestCommandTemplate: string,
-    unittestCommandTemplate: string,
+    testCommandTemplate: string,
     terminalReveal: TerminalRevealSetting,
     generatedLaunchNamePrefix: string,
     runOpenNewTerminalIfBusy: boolean,
-    launchWorkspaceFolder: string,
+    launchJsonPath: string,
+    managedTargetConfigurationLimit: number,
 ): Promise<void> {
     const lastTarget = lastTargetStore.get();
     if (!lastTarget) {
@@ -35,12 +35,7 @@ export async function runLastFile(
         return;
     }
 
-    const managed = await ensureManagedLaunchConfig(
-        target,
-        generatedLaunchNamePrefix,
-        scriptCommandTemplate,
-        launchWorkspaceFolder,
-    );
+    await ensureManagedLaunchConfig(target, generatedLaunchNamePrefix, launchJsonPath, managedTargetConfigurationLimit);
 
     const configuredFramework = isTestFile(target.fileBasename)
         ? (resolveConfiguredTestFramework(target) ?? "pytest")
@@ -56,9 +51,7 @@ export async function runLastFile(
             testFunction: pytestFunction,
             testTarget: pytestTarget,
         });
-        await runPythonTarget(target, pytestCommandTemplate, terminalReveal, runOpenNewTerminalIfBusy, {
-            pytestFunction,
-            pytestTarget,
+        await runPythonTarget(target, testCommandTemplate, terminalReveal, runOpenNewTerminalIfBusy, {
             testFunction: pytestFunction,
             testTarget: pytestTarget,
         });
@@ -68,17 +61,13 @@ export async function runLastFile(
     if (testFramework === "unittest") {
         const unittestTarget = lastTarget.testTarget ?? target.filePath;
         const unittestFunction = lastTarget.testFunction ?? "";
-        const needsFilter = unittestFunction.length > 0 && unittestTarget === target.filePath;
-        const unittestTemplate = needsFilter ? `${unittestCommandTemplate} -k {testFunction}` : unittestCommandTemplate;
 
         await lastTargetStore.set(target, {
             testFramework,
             testFunction: unittestFunction,
             testTarget: unittestTarget,
         });
-        await runPythonTarget(target, unittestTemplate, terminalReveal, runOpenNewTerminalIfBusy, {
-            pytestFunction: unittestFunction,
-            pytestTarget: unittestTarget,
+        await runPythonTarget(target, testCommandTemplate, terminalReveal, runOpenNewTerminalIfBusy, {
             testFunction: unittestFunction,
             testTarget: unittestTarget,
         });
@@ -86,5 +75,5 @@ export async function runLastFile(
     }
 
     await lastTargetStore.set(target);
-    await runPythonTarget(target, managed.runCommandTemplate, terminalReveal, runOpenNewTerminalIfBusy);
+    await runPythonTarget(target, scriptCommandTemplate, terminalReveal, runOpenNewTerminalIfBusy);
 }

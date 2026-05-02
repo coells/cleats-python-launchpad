@@ -9,7 +9,7 @@ export interface LaunchTargetDescriptor {
 const TEMPLATE_MARKER_TYPE = "template";
 const TARGET_MARKER_TYPE = "target";
 
-const RUN_COMMAND_TEMPLATE_ENV_KEY = "CLEATS_PYTHON_LAUNCHPAD_RUN_COMMAND_TEMPLATE";
+const LEGACY_RUN_COMMAND_TEMPLATE_ENV_KEY = "CLEATS_PYTHON_LAUNCHPAD_RUN_COMMAND_TEMPLATE";
 
 const CONFIG_KEY_ORDER = [
     "name",
@@ -39,7 +39,6 @@ type ManagedTargetLaunchConfig = ManagedLaunchConfig;
 export interface UpsertManagedLaunchResult {
     configurations: ManagedLaunchConfig[];
     debugConfig: ManagedLaunchConfig;
-    runCommandTemplate: string;
 }
 
 export interface RemoveManagedTargetLaunchResult {
@@ -201,16 +200,21 @@ function getManagedType(
     return undefined;
 }
 
-function getRunCommandTemplate(config: Record<string, unknown>): string | undefined {
-    const env = config.env;
-    if (env && typeof env === "object") {
-        const fromEnv = (env as Record<string, unknown>)[RUN_COMMAND_TEMPLATE_ENV_KEY];
-        if (typeof fromEnv === "string") {
-            return fromEnv;
-        }
+function stripLegacyRunCommandTemplateEnv(env: unknown): Record<string, unknown> | undefined {
+    if (!env || typeof env !== "object") {
+        return undefined;
     }
 
-    return undefined;
+    const cleanedEnv = {
+        ...(env as Record<string, unknown>),
+    };
+    delete cleanedEnv[LEGACY_RUN_COMMAND_TEMPLATE_ENV_KEY];
+
+    if (Object.keys(cleanedEnv).length === 0) {
+        return undefined;
+    }
+
+    return cleanedEnv;
 }
 
 function stripManagedMetadata(config: Record<string, unknown>): Record<string, unknown> {
@@ -233,7 +237,7 @@ function stripManagedMetadata(config: Record<string, unknown>): Record<string, u
     return normalized;
 }
 
-function buildManagedRunTemplateConfig(prefix: string, runCommandTemplate: string): ManagedRunTemplateConfig {
+function buildManagedRunTemplateConfig(prefix: string): ManagedRunTemplateConfig {
     return orderConfigKeys({
         name: getManagedRunTemplateName(prefix),
         type: "debugpy",
@@ -242,9 +246,6 @@ function buildManagedRunTemplateConfig(prefix: string, runCommandTemplate: strin
         cwd: "${fileDirname}",
         console: "integratedTerminal",
         justMyCode: true,
-        env: {
-            [RUN_COMMAND_TEMPLATE_ENV_KEY]: runCommandTemplate,
-        },
         presentation: {
             group: getManagedPresentationGroup(prefix),
             hidden: true,
@@ -252,24 +253,23 @@ function buildManagedRunTemplateConfig(prefix: string, runCommandTemplate: strin
     }) as ManagedRunTemplateConfig;
 }
 
-function migrateManagedRunTemplateConfig(
-    config: ManagedLaunchConfig,
-    runCommandTemplate: string,
-    prefix: string,
-): ManagedRunTemplateConfig {
+function migrateManagedRunTemplateConfig(config: ManagedLaunchConfig, prefix: string): ManagedRunTemplateConfig {
     const source = stripManagedMetadata(config as Record<string, unknown>);
-    const sourceAsManaged = source as ManagedLaunchConfig;
-    const existingEnv = source.env;
-    const existingPresentation = source.presentation;
+    const sourceRecord = source as Record<string, unknown>;
+    const existingEnv = stripLegacyRunCommandTemplateEnv(sourceRecord.env);
+    const existingPresentation = sourceRecord.presentation;
+    const sourceWithoutEnv = {
+        ...sourceRecord,
+    };
+    delete sourceWithoutEnv.env;
+    delete sourceWithoutEnv.presentation;
+
     const normalized: ManagedRunTemplateConfig = {
-        ...sourceAsManaged,
-        type: typeof sourceAsManaged.type === "string" ? sourceAsManaged.type : "debugpy",
-        request: typeof sourceAsManaged.request === "string" ? sourceAsManaged.request : "launch",
+        ...(sourceWithoutEnv as ManagedLaunchConfig),
+        type: typeof sourceRecord.type === "string" ? sourceRecord.type : "debugpy",
+        request: typeof sourceRecord.request === "string" ? sourceRecord.request : "launch",
         name: getManagedRunTemplateName(prefix),
-        env: {
-            ...(existingEnv && typeof existingEnv === "object" ? (existingEnv as Record<string, unknown>) : {}),
-            [RUN_COMMAND_TEMPLATE_ENV_KEY]: runCommandTemplate,
-        },
+        ...(existingEnv ? { env: existingEnv } : {}),
         presentation: {
             ...(existingPresentation && typeof existingPresentation === "object"
                 ? (existingPresentation as Record<string, unknown>)
@@ -285,7 +285,6 @@ function migrateManagedRunTemplateConfig(
 function resolveRunTemplateConfig(
     existingConfigurations: readonly unknown[],
     prefix: string,
-    defaultRunCommandTemplate: string,
 ): ManagedRunTemplateConfig {
     const runTemplateName = getManagedRunTemplateName(prefix);
     const existingTemplate = existingConfigurations.find((candidate): candidate is ManagedRunTemplateConfig => {
@@ -297,14 +296,10 @@ function resolveRunTemplateConfig(
     });
 
     if (!existingTemplate) {
-        return buildManagedRunTemplateConfig(prefix, defaultRunCommandTemplate);
+        return buildManagedRunTemplateConfig(prefix);
     }
 
-    return migrateManagedRunTemplateConfig(
-        existingTemplate,
-        getRunCommandTemplate(existingTemplate as Record<string, unknown>) ?? defaultRunCommandTemplate,
-        prefix,
-    );
+    return migrateManagedRunTemplateConfig(existingTemplate, prefix);
 }
 
 function buildTargetTemplateBase(runTemplateConfig: ManagedRunTemplateConfig): Record<string, unknown> {
@@ -353,16 +348,15 @@ export function upsertManagedLaunchConfig(
     existingConfigurations: readonly unknown[],
     descriptor: LaunchTargetDescriptor,
     prefix: string,
-    defaultRunCommandTemplate: string,
+    managedTargetConfigurationLimit = 10,
 ): UpsertManagedLaunchResult {
-    const runTemplateConfig = resolveRunTemplateConfig(existingConfigurations, prefix, defaultRunCommandTemplate);
-    const runCommandTemplate =
-        getRunCommandTemplate(runTemplateConfig as Record<string, unknown>) ?? defaultRunCommandTemplate;
+    const runTemplateConfig = resolveRunTemplateConfig(existingConfigurations, prefix);
     const nextConfiguration = buildManagedLaunchConfig(descriptor, prefix, buildTargetTemplateBase(runTemplateConfig));
     const nextName = nextConfiguration.name;
 
     const preserved: ManagedLaunchConfig[] = [];
     let hasManagedTemplate = false;
+    let replacedExistingTarget = false;
 
     for (const candidate of existingConfigurations) {
         if (!candidate || typeof candidate !== "object") {
@@ -379,15 +373,15 @@ export function upsertManagedLaunchConfig(
 
         if (role === TEMPLATE_MARKER_TYPE) {
             if (!hasManagedTemplate) {
-                preserved.push(
-                    migrateManagedRunTemplateConfig(candidate as ManagedLaunchConfig, runCommandTemplate, prefix),
-                );
+                preserved.push(migrateManagedRunTemplateConfig(candidate as ManagedLaunchConfig, prefix));
                 hasManagedTemplate = true;
             }
             continue;
         }
 
         if (config.name === nextName) {
+            preserved.push(nextConfiguration);
+            replacedExistingTarget = true;
             continue;
         }
 
@@ -406,11 +400,44 @@ export function upsertManagedLaunchConfig(
         preserved.push(runTemplateConfig);
     }
 
+    if (!replacedExistingTarget) {
+        preserved.push(nextConfiguration);
+    }
+
+    const targetLimit = Math.max(1, Math.floor(managedTargetConfigurationLimit));
+    const trimmed = trimManagedTargetsToLimit(preserved, prefix, targetLimit);
+
     return {
-        configurations: [...preserved, nextConfiguration],
+        configurations: trimmed,
         debugConfig: nextConfiguration,
-        runCommandTemplate,
     };
+}
+
+function trimManagedTargetsToLimit(
+    configurations: ManagedLaunchConfig[],
+    prefix: string,
+    targetLimit: number,
+): ManagedLaunchConfig[] {
+    const targetIndices: number[] = [];
+
+    for (let index = 0; index < configurations.length; index += 1) {
+        const candidate = configurations[index] as unknown;
+        if (!candidate || typeof candidate !== "object") {
+            continue;
+        }
+
+        if (getManagedType(candidate as Record<string, unknown>, prefix) === TARGET_MARKER_TYPE) {
+            targetIndices.push(index);
+        }
+    }
+
+    if (targetIndices.length <= targetLimit) {
+        return configurations;
+    }
+
+    const removeCount = targetIndices.length - targetLimit;
+    const indicesToRemove = new Set(targetIndices.slice(0, removeCount));
+    return configurations.filter((_, index) => !indicesToRemove.has(index));
 }
 
 export function removeManagedTargetLaunchConfigs(

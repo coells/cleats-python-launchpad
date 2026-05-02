@@ -19,21 +19,28 @@
     - file is Python,
     - file is inside an open workspace folder.
 - Persist last valid target per workspace.
-- Build run commands from a managed launch.json run-template entry.
-    - Seed that template from `cleatsPythonLaunchpad.runCommandTemplate` placeholders.
-    - Ensure managed target debug configurations reference the managed run-template entry.
+- Build run commands from VS Code settings templates (`cleatsPythonLaunchpad.runCommandTemplate` and `cleatsPythonLaunchpad.testCommandTemplate`).
+- Keep managed launch.json template entries focused on debug/launch defaults only; do not store run command metadata in launch configurations.
+- In multi-root workspaces, resolve managed launch target by `cleatsPythonLaunchpad.launchJsonPath` when configured.
 - Declare dependency on `ms-python.python` in the extension manifest.
 - For debug actions, require and activate `ms-python.python`.
 - For run actions, support configuring whether a new terminal should open when a previous run is still active.
+- For debug actions, support configuring whether a second debug session can launch when a matching target is already active.
+- If `cleatsPythonLaunchpad.debugOpenNewTerminalIfBusy` is `false` and a matching debug target is active, do not start another debug process.
 - Manage generated launch configurations with deterministic marker metadata.
+- Never add non-standard/unsupported keys to debug configurations.
 - Preserve user-managed launch configurations unchanged.
 - Clear stale stored target when the referenced file no longer exists or is invalid.
 
 ## Configuration Requirements
 
 - Keep `cleatsPythonLaunchpad.runCommandTemplate`.
+- Keep `cleatsPythonLaunchpad.testCommandTemplate`.
 - Keep `cleatsPythonLaunchpad.generatedLaunchNamePrefix`.
+- Keep `cleatsPythonLaunchpad.launchJsonPath`.
+- Keep `cleatsPythonLaunchpad.managedTargetConfigurationLimit`.
 - Keep `cleatsPythonLaunchpad.runOpenNewTerminalIfBusy`.
+- Keep `cleatsPythonLaunchpad.debugOpenNewTerminalIfBusy`.
 - Keep `cleatsPythonLaunchpad.terminalReveal` enum values:
     - `always`
     - `silent`

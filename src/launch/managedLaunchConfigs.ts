@@ -11,7 +11,6 @@ import {
 export interface EnsuredManagedLaunchConfig {
     debugConfig: ManagedLaunchConfig;
     launchWorkspaceFolder: vscode.WorkspaceFolder;
-    runCommandTemplate: string;
 }
 
 export interface RemovedManagedTargetLaunchConfigs {
@@ -30,18 +29,18 @@ function toDescriptor(target: ResolvedPythonTarget) {
 export async function ensureManagedLaunchConfig(
     target: ResolvedPythonTarget,
     prefix: string,
-    defaultRunCommandTemplate: string,
-    configuredLaunchWorkspaceFolder: string,
+    configuredLaunchJsonPath: string,
+    managedTargetConfigurationLimit: number,
 ): Promise<EnsuredManagedLaunchConfig> {
-    // In multi-root workspaces, managed launch entries can be pinned to a specific folder.
+    // In multi-root workspaces, managed launch entries can be pinned to a specific launch.json path.
     const launchWorkspaceFolderResolution = resolveLaunchWorkspaceFolder(
         vscode.workspace.workspaceFolders,
         target.workspaceFolder,
-        configuredLaunchWorkspaceFolder,
+        configuredLaunchJsonPath,
     );
-    if (configuredLaunchWorkspaceFolder.trim() && !launchWorkspaceFolderResolution.didMatchConfiguredFolder) {
+    if (configuredLaunchJsonPath.trim() && !launchWorkspaceFolderResolution.didMatchConfiguredLaunchJsonPath) {
         await vscode.window.showWarningMessage(
-            `Cleats: Python Launchpad could not find workspace folder "${configuredLaunchWorkspaceFolder}"; using ${target.workspaceFolder.name} for launch.json.`,
+            `Cleats: Python Launchpad could not match launch.json path "${configuredLaunchJsonPath}"; using ${target.workspaceFolder.name} for launch.json.`,
         );
     }
 
@@ -51,7 +50,12 @@ export async function ensureManagedLaunchConfig(
     );
     const existingConfigurations = launchConfiguration.get<readonly unknown[]>("configurations", []);
     const descriptor = toDescriptor(target);
-    const result = upsertManagedLaunchConfig(existingConfigurations, descriptor, prefix, defaultRunCommandTemplate);
+    const result = upsertManagedLaunchConfig(
+        existingConfigurations,
+        descriptor,
+        prefix,
+        managedTargetConfigurationLimit,
+    );
 
     await launchConfiguration.update(
         "configurations",
@@ -62,7 +66,6 @@ export async function ensureManagedLaunchConfig(
     return {
         debugConfig: result.debugConfig,
         launchWorkspaceFolder: launchWorkspaceFolderResolution.workspaceFolder,
-        runCommandTemplate: result.runCommandTemplate,
     };
 }
 

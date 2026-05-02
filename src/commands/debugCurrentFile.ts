@@ -1,5 +1,11 @@
 import * as vscode from "vscode";
 
+import {
+    isDebugTargetBusy,
+    shouldOpenNewDebugTerminalIfBusy,
+    startDebuggingWithBusyTracking,
+    withDebugInvocationSuffix,
+} from "../debug/debugBusyTerminal.js";
 import { buildPytestDebugConfig } from "../debug/pytestDebugConfig.js";
 import { buildUnittestDebugConfig } from "../debug/unittestDebugConfig.js";
 import { ensureManagedLaunchConfig } from "../launch/managedLaunchConfigs.js";
@@ -17,8 +23,9 @@ import type { LastTargetStore } from "../state/lastTargetStore.js";
 export async function debugCurrentFile(
     lastTargetStore: LastTargetStore,
     generatedLaunchNamePrefix: string,
-    defaultRunCommandTemplate: string,
-    launchWorkspaceFolder: string,
+    launchJsonPath: string,
+    managedTargetConfigurationLimit: number,
+    debugOpenNewTerminalIfBusy: boolean,
 ): Promise<void> {
     const target = await resolveActivePythonTarget();
     if (!target) {
@@ -32,9 +39,18 @@ export async function debugCurrentFile(
     const managed = await ensureManagedLaunchConfig(
         target,
         generatedLaunchNamePrefix,
-        defaultRunCommandTemplate,
-        launchWorkspaceFolder,
+        launchJsonPath,
+        managedTargetConfigurationLimit,
     );
+    const isBusy = isDebugTargetBusy(target);
+    if (isBusy && !debugOpenNewTerminalIfBusy) {
+        await vscode.window.showInformationMessage(
+            `A debug session for ${target.fileBasename} is already running. Stop it first or enable debugOpenNewTerminalIfBusy.`,
+        );
+        return;
+    }
+
+    const openNewDebugTerminal = shouldOpenNewDebugTerminalIfBusy(target, debugOpenNewTerminalIfBusy);
 
     const testFramework = isTestFile(target.fileBasename)
         ? (resolveConfiguredTestFramework(target) ?? "pytest")
@@ -44,14 +60,15 @@ export async function debugCurrentFile(
         const pytestSelection = resolvePytestTargetForPosition(target, activePosition);
         await lastTargetStore.set(target, {
             testFramework,
-            testFunction: pytestSelection.pytestFunction,
-            testTarget: pytestSelection.pytestTarget,
+            testFunction: pytestSelection.testFunction,
+            testTarget: pytestSelection.testTarget,
         });
 
-        const started = await vscode.debug.startDebugging(
-            managed.launchWorkspaceFolder,
-            buildPytestDebugConfig(target, pytestSelection.pytestTarget, managed.debugConfig),
+        const debugConfig = withDebugInvocationSuffix(
+            buildPytestDebugConfig(target, pytestSelection.testTarget, managed.debugConfig),
+            openNewDebugTerminal,
         );
+        const started = await startDebuggingWithBusyTracking(target, managed.launchWorkspaceFolder, debugConfig);
         if (!started) {
             await vscode.window.showErrorMessage(`Failed to start pytest debugging for ${target.fileBasename}.`);
         }
@@ -63,19 +80,20 @@ export async function debugCurrentFile(
         const unittestSelection = resolveUnittestTargetForPosition(target, activePosition);
         await lastTargetStore.set(target, {
             testFramework,
-            testFunction: unittestSelection.pytestFunction,
-            testTarget: unittestSelection.pytestTarget,
+            testFunction: unittestSelection.testFunction,
+            testTarget: unittestSelection.testTarget,
         });
 
-        const started = await vscode.debug.startDebugging(
-            managed.launchWorkspaceFolder,
+        const debugConfig = withDebugInvocationSuffix(
             buildUnittestDebugConfig(
                 target,
-                unittestSelection.pytestTarget,
+                unittestSelection.testTarget,
                 unittestSelection.unittestFilter,
                 managed.debugConfig,
             ),
+            openNewDebugTerminal,
         );
+        const started = await startDebuggingWithBusyTracking(target, managed.launchWorkspaceFolder, debugConfig);
         if (!started) {
             await vscode.window.showErrorMessage(`Failed to start unittest debugging for ${target.fileBasename}.`);
         }
@@ -84,7 +102,11 @@ export async function debugCurrentFile(
 
     await lastTargetStore.set(target);
 
-    const started = await vscode.debug.startDebugging(managed.launchWorkspaceFolder, managed.debugConfig);
+    const started = await startDebuggingWithBusyTracking(
+        target,
+        managed.launchWorkspaceFolder,
+        withDebugInvocationSuffix(managed.debugConfig, openNewDebugTerminal),
+    );
     if (!started) {
         await vscode.window.showErrorMessage(`Failed to start debugging for ${target.fileBasename}.`);
     }

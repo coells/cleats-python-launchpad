@@ -3,8 +3,6 @@ import type { ResolvedPythonTarget } from "../types.js";
 export interface CommandTemplateContext {
     fileBasename: string;
     fileDirname: string;
-    pytestFunction: string;
-    pytestTarget: string;
     testFunction: string;
     testTarget: string;
     script: string;
@@ -12,8 +10,6 @@ export interface CommandTemplateContext {
 }
 
 export interface CommandTemplateContextOverrides {
-    pytestFunction?: string;
-    pytestTarget?: string;
     testFunction?: string;
     testTarget?: string;
 }
@@ -30,14 +26,12 @@ export function buildCommandTemplateContext(
     target: ResolvedPythonTarget,
     overrides: CommandTemplateContextOverrides = {},
 ): CommandTemplateContext {
-    const testFunction = overrides.testFunction ?? overrides.pytestFunction ?? "";
-    const testTarget = overrides.testTarget ?? overrides.pytestTarget ?? target.filePath;
+    const testFunction = overrides.testFunction ?? "";
+    const testTarget = overrides.testTarget ?? target.filePath;
 
     return {
         fileBasename: target.fileBasename,
         fileDirname: target.fileDirname,
-        pytestFunction: overrides.pytestFunction ?? testFunction,
-        pytestTarget: overrides.pytestTarget ?? testTarget,
         script: target.filePath,
         testFunction,
         testTarget,
@@ -52,7 +46,5 @@ export function expandCommandTemplate(template: string, context: CommandTemplate
         .replaceAll("{fileDirname}", quoteForShell(context.fileDirname))
         .replaceAll("{fileBasename}", quoteForShell(context.fileBasename))
         .replaceAll("{testTarget}", quoteForShell(context.testTarget))
-        .replaceAll("{testFunction}", quoteForShell(context.testFunction))
-        .replaceAll("{pytestTarget}", quoteForShell(context.pytestTarget))
-        .replaceAll("{pytestFunction}", quoteForShell(context.pytestFunction));
+        .replaceAll("{testFunction}", quoteForShell(context.testFunction));
 }

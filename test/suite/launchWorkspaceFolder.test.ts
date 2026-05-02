@@ -25,29 +25,29 @@ void test("resolveLaunchWorkspaceFolder uses default folder when setting is empt
         "",
     );
 
-    assert.equal(result.didMatchConfiguredFolder, true);
+    assert.equal(result.didMatchConfiguredLaunchJsonPath, true);
     assert.equal(result.workspaceFolder, folderA);
 });
 
-void test("resolveLaunchWorkspaceFolder matches configured workspace name", () => {
+void test("resolveLaunchWorkspaceFolder matches configured launch.json path", () => {
     const result = resolveLaunchWorkspaceFolder(
         [folderA, folderB] as unknown as readonly vscode.WorkspaceFolder[],
         folderA as unknown as vscode.WorkspaceFolder,
-        "beta",
+        "/workspace/beta/.vscode/launch.json",
     );
 
-    assert.equal(result.didMatchConfiguredFolder, true);
+    assert.equal(result.didMatchConfiguredLaunchJsonPath, true);
     assert.equal(result.workspaceFolder, folderB);
 });
 
-void test("resolveLaunchWorkspaceFolder matches configured absolute workspace path", () => {
+void test("resolveLaunchWorkspaceFolder matches configured workspace folder path", () => {
     const result = resolveLaunchWorkspaceFolder(
         [folderA, folderB] as unknown as readonly vscode.WorkspaceFolder[],
         folderA as unknown as vscode.WorkspaceFolder,
         "/workspace/beta/",
     );
 
-    assert.equal(result.didMatchConfiguredFolder, true);
+    assert.equal(result.didMatchConfiguredLaunchJsonPath, true);
     assert.equal(result.workspaceFolder, folderB);
 });
 
@@ -58,6 +58,6 @@ void test("resolveLaunchWorkspaceFolder falls back to default when setting is un
         "missing-folder",
     );
 
-    assert.equal(result.didMatchConfiguredFolder, false);
+    assert.equal(result.didMatchConfiguredLaunchJsonPath, false);
     assert.equal(result.workspaceFolder, folderA);
 });
