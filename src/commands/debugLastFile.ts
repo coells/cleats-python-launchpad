@@ -11,6 +11,7 @@ import { buildUnittestDebugConfig } from "../debug/unittestDebugConfig.js";
 import { ensureManagedLaunchConfig } from "../launch/managedLaunchConfigs.js";
 import { ensurePythonExtension } from "../python/pythonExtension.js";
 import { resolveStoredPythonTarget } from "../resolvePythonTarget.js";
+import { RUN_COMMAND_TEMPLATE_ENV_KEY, TEST_COMMAND_TEMPLATE_ENV_KEY } from "../run/commandTemplate.js";
 import { isTestFile, resolveConfiguredTestFramework } from "../run/testFramework.js";
 import type { LastTargetStore } from "../state/lastTargetStore.js";
 
@@ -47,11 +48,18 @@ export async function debugLastFile(
         return;
     }
 
+    const configuredFramework = isTestFile(target.fileBasename)
+        ? (resolveConfiguredTestFramework(target) ?? "pytest")
+        : undefined;
+    const testFramework = lastTarget.testFramework ?? configuredFramework;
+    const commandTemplateEnvKeyToCopy = testFramework ? TEST_COMMAND_TEMPLATE_ENV_KEY : RUN_COMMAND_TEMPLATE_ENV_KEY;
+
     const managed = await ensureManagedLaunchConfig(
         target,
         generatedLaunchNamePrefix,
         launchJsonPath,
         managedTargetConfigurationLimit,
+        commandTemplateEnvKeyToCopy,
     );
     const isBusy = isDebugTargetBusy(target);
     if (isBusy && !debugOpenNewTerminalIfBusy) {
@@ -63,10 +71,6 @@ export async function debugLastFile(
 
     const openNewDebugTerminal = shouldOpenNewDebugTerminalIfBusy(target, debugOpenNewTerminalIfBusy);
 
-    const configuredFramework = isTestFile(target.fileBasename)
-        ? (resolveConfiguredTestFramework(target) ?? "pytest")
-        : undefined;
-    const testFramework = lastTarget.testFramework ?? configuredFramework;
     if (testFramework === "pytest") {
         const pytestTarget = lastTarget.testTarget ?? target.filePath;
         const pytestFunction = lastTarget.testFunction ?? "";

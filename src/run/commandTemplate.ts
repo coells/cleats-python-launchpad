@@ -1,5 +1,11 @@
 import type { ResolvedPythonTarget } from "../types.js";
 
+export const RUN_COMMAND_TEMPLATE = "python {script}";
+export const TEST_COMMAND_TEMPLATE = "python -m pytest {testTarget}";
+export const RUN_COMMAND_TEMPLATE_ENV_KEY = "PYTHON_LAUNCHPAD_RUN_COMMAND";
+export const TEST_COMMAND_TEMPLATE_ENV_KEY = "PYTHON_LAUNCHPAD_TEST_COMMAND";
+export type CommandTemplateEnvKey = typeof RUN_COMMAND_TEMPLATE_ENV_KEY | typeof TEST_COMMAND_TEMPLATE_ENV_KEY;
+
 export interface CommandTemplateContext {
     fileBasename: string;
     fileDirname: string;
@@ -12,6 +18,20 @@ export interface CommandTemplateContext {
 export interface CommandTemplateContextOverrides {
     testFunction?: string;
     testTarget?: string;
+}
+
+export function resolveCommandTemplateFromEnv(env: unknown, envKey: string, fallbackTemplate: string): string {
+    if (!env || typeof env !== "object") {
+        return fallbackTemplate;
+    }
+
+    const value = (env as Record<string, unknown>)[envKey];
+    if (typeof value !== "string") {
+        return fallbackTemplate;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : fallbackTemplate;
 }
 
 function quoteForShell(value: string): string {

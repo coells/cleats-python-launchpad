@@ -2,10 +2,18 @@
     "name": "cleats-python-launchpad",
     "displayName": "Cleats: Python Launchpad",
     "description": "Run and debug the current or last Python file with minimal setup.",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "publisher": "coells",
     "author": "Tomas Bouda",
     "license": "MIT",
+    "homepage": "https://github.com/coells/cleats-python-launchpad",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/coells/cleats-python-launchpad"
+    },
+    "bugs": {
+        "url": "https://github.com/coells/cleats-python-launchpad/issues"
+    },
     "type": "module",
     "main": "./out/src/extension.js",
     "engines": {
@@ -80,16 +88,6 @@
                     "type": "string",
                     "default": "Launchpad",
                     "description": "Prefix used for launch.json entries managed by Cleats: Python Launchpad."
-                },
-                "cleatsPythonLaunchpad.runCommandTemplate": {
-                    "type": "string",
-                    "default": "python {script}",
-                    "description": "Run command template used for non-test Python files. Supported placeholders: {script}, {workspaceFolder}, {fileDirname}, {fileBasename}, {testTarget}, {testFunction}."
-                },
-                "cleatsPythonLaunchpad.testCommandTemplate": {
-                    "type": "string",
-                    "default": "python -m pytest {testTarget}",
-                    "description": "Run command template used when Cleats detects a test file (pytest or unittest). Supported placeholders: {script}, {workspaceFolder}, {fileDirname}, {fileBasename}, {testTarget}, {testFunction}."
                 },
                 "cleatsPythonLaunchpad.launchJsonPath": {
                     "type": "string",

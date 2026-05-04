@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 
+import type { CommandTemplateEnvKey } from "../run/commandTemplate.js";
 import type { ManagedLaunchConfig, ResolvedPythonTarget } from "../types.js";
 import { resolveLaunchWorkspaceFolder } from "./launchWorkspaceFolder.js";
 import {
@@ -20,9 +21,8 @@ export interface RemovedManagedTargetLaunchConfigs {
 
 function toDescriptor(target: ResolvedPythonTarget) {
     return {
-        fileDirname: target.fileDirname,
         filePath: target.filePath,
-        workspaceRelativePath: vscode.workspace.asRelativePath(target.fileUri, false),
+        workspaceFolderPath: target.workspaceFolder.uri.fsPath,
     };
 }
 
@@ -31,6 +31,7 @@ export async function ensureManagedLaunchConfig(
     prefix: string,
     configuredLaunchJsonPath: string,
     managedTargetConfigurationLimit: number,
+    commandTemplateEnvKeyToCopy?: CommandTemplateEnvKey,
 ): Promise<EnsuredManagedLaunchConfig> {
     // In multi-root workspaces, managed launch entries can be pinned to a specific launch.json path.
     const launchWorkspaceFolderResolution = resolveLaunchWorkspaceFolder(
@@ -55,6 +56,7 @@ export async function ensureManagedLaunchConfig(
         descriptor,
         prefix,
         managedTargetConfigurationLimit,
+        commandTemplateEnvKeyToCopy,
     );
 
     await launchConfiguration.update(

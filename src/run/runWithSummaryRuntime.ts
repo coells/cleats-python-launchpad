@@ -30,6 +30,9 @@ function run(): void {
         processLabel = args.processLabel;
         startedAt = Date.now();
 
+        process.stdout.write(`[Cleats] cwd: ${process.cwd()}\n`);
+        process.stdout.write(`[Cleats] command: ${args.commandLine}\n\n`);
+
         const child = spawn(args.commandLine, {
             cwd: process.cwd(),
             shell: true,

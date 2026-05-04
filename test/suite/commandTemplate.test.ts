@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { expandCommandTemplate } from "../../src/run/commandTemplate.js";
+import { expandCommandTemplate, resolveCommandTemplateFromEnv } from "../../src/run/commandTemplate.js";
 
 void test("expandCommandTemplate replaces all supported placeholders", () => {
     const result = expandCommandTemplate(
@@ -65,4 +65,23 @@ void test("expandCommandTemplate replaces generic test placeholders", () => {
     assert.match(result, /tests\.test_math\.TestMath\.test_add/);
     assert.equal(result.includes("{testTarget}"), false);
     assert.equal(result.includes("{testFunction}"), false);
+});
+
+void test("resolveCommandTemplateFromEnv returns configured value when present", () => {
+    const resolved = resolveCommandTemplateFromEnv(
+        {
+            PYTHON_LAUNCHPAD_RUN_COMMAND: "uv run python {script}",
+        },
+        "PYTHON_LAUNCHPAD_RUN_COMMAND",
+        "python {script}",
+    );
+
+    assert.equal(resolved, "uv run python {script}");
+});
+
+void test("resolveCommandTemplateFromEnv falls back when env key is missing", () => {
+    const fallback = "python -m pytest {testTarget}";
+    const resolved = resolveCommandTemplateFromEnv({}, "PYTHON_LAUNCHPAD_TEST_COMMAND", fallback);
+
+    assert.equal(resolved, fallback);
 });

@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pytest", specifier = ">=9.0.3" }]
+requires-dist = [{ name = "pytest" }]
 
 [[package]]
 name = "colorama"

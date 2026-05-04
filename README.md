@@ -6,28 +6,32 @@ This extension keeps run/debug flows fast while preserving deterministic launch 
 
 ## Why It Exists
 
-Opening Python scripts quickly is easy, but consistent run/debug ergonomics across files and workspaces often drift. Cleats: Python Launchpad keeps the workflow predictable and lightweight.
+Running and debugging Python files in VSCode quickly is inconvenient. Let's fix that.
+
+- Ctrl+Shift+F10 creates a launch configuration for the current script and runs it -- quick and easy.
+- Ctrl+F10 runs the last configuration again -- fast re-run.
+- Ctrl+Shift+F9 and Ctrl+F9 do the same for debugging -- debug with the same ease.
+- Run and debug multiple scripts simultaneously -- no more "A debug session is already active" errors.
+- Launchpad creates a `Template` configuration that allows for easy customization of launch options.
 
 ## Behavior
 
-- Provides five commands:
-  - Run Current File
-  - Debug Current File
-  - Run Last File
-  - Debug Last File
-  - Remove Managed Target Configurations
 - Depends on the Microsoft Python extension (`ms-python.python`) for Python debugging support.
-- Persists the last valid Python target per workspace.
-- Persists the last valid Python execution target details per workspace, including test-node selection when applicable.
-- Generates run commands from a managed launch.json template entry that you can customize.
 - Auto-detects test files (`test*.py`, `*_test.py`) and routes them to pytest or unittest using Python extension test settings.
-- In test files, `Run Current File` runs only the current function or method when the cursor is inside one, otherwise the whole module target.
-- In test files, `Debug Current File` debugs only the current function or method when the cursor is inside one, otherwise the whole module target.
+- In test files, `Run/Debug Current File` runs/debugs only the current function or method when the cursor is inside one, otherwise the whole module target.
 - Prints a terminal summary tail after each run with outcome, exit code, and runtime (green for success, red for failure).
-- Creates and updates only extension-managed debug configurations.
+- Creates and updates only extension-managed debug configurations while existing managed target configurations are never overwritten once created.
 - Preserves user-managed launch configurations untouched.
 
-## Default Keybindings
+### Commands
+
+- Run Current File
+- Debug Current File
+- Run Last File
+- Debug Last File
+- Remove Managed Target Configurations
+
+### Default Keybindings
 
 Default shortcuts use Ctrl key combinations on all platforms:
 
@@ -36,24 +40,18 @@ Default shortcuts use Ctrl key combinations on all platforms:
 - Debug Last File: `Ctrl+F9`
 - Run Last File: `Ctrl+F10`
 
-## Validation Rules
+### Settings
 
-Targets are accepted only when:
+Built-in command templates are fixed in code:
 
-- an active editor exists,
-- the file is saved,
-- the file is Python,
-- the file is inside an open workspace folder.
+- run: `python {script}`
+- test: `python -m pytest {testTarget}`
 
-## Settings
+These templates are also written into managed launch configuration environment variables:
 
-- `cleatsPythonLaunchpad.runCommandTemplate`
-  - Default: `python {script}`
-  - Used for run commands on non-test Python files.
-- `cleatsPythonLaunchpad.testCommandTemplate`
-  - Default: `python -m pytest {testTarget}`
-  - Used for test files (pytest and unittest).
-  - For unittest selection, `{testTarget}` and `{testFunction}` contain the unittest-oriented values.
+- `PYTHON_LAUNCHPAD_RUN_COMMAND`
+- `PYTHON_LAUNCHPAD_TEST_COMMAND`
+
 - `cleatsPythonLaunchpad.generatedLaunchNamePrefix`
   - Default: `Launchpad`
 - `cleatsPythonLaunchpad.launchJsonPath`
@@ -75,40 +73,39 @@ Targets are accepted only when:
 - `cleatsPythonLaunchpad.terminalReveal`
   - Allowed values: `always`, `silent`, `never`
 
-Supported placeholders for `runCommandTemplate` and `testCommandTemplate`:
-
-- `{script}`
-  - Absolute path of the resolved Python file.
-- `{workspaceFolder}`
-  - Absolute path of the workspace folder containing the resolved file.
-- `{fileDirname}`
-  - Absolute directory path containing `{script}`.
-- `{fileBasename}`
-  - File name of `{script}` (for example `test_math.py`).
-- `{testTarget}`
-  - Test target resolved from cursor/file context (for example a pytest node id or unittest dotted target).
-- `{testFunction}`
-  - Test function/method name resolved from cursor context (empty when no function/method is selected).
-
 ## Managed launch.json entries
 
 When you run or debug with Cleats, the extension manages two launch entries under your configured prefix:
 
 - `...: Template`
   - Provides the base launch/debug options that managed target entries inherit.
-  - Run command templates are resolved from VS Code settings, not from `launch.json` entries.
+  - Includes `PYTHON_LAUNCHPAD_RUN_COMMAND` and `PYTHON_LAUNCHPAD_TEST_COMMAND` in `env`.
   - Managed template identity is based on:
     - `name: "<prefix>: Template"`
     - `presentation: { "group": "<prefix>", "hidden": true }`
-- `...: <workspace-relative-python-file>`
+- `...: <python-file-name>`
   - Target-specific debug configuration.
+  - Inherits the managed template `env` values.
+  - Run commands also apply target `env` and `envFile` values.
   - Managed target identity is based on:
-    - `name: "<prefix>: <workspace-relative-python-file>"`
+    - `name: "<prefix>: <python-file-name>"`
     - `presentation: { "group": "<prefix>" }`
 
 Use `Remove Managed Target Configurations` to delete all managed target entries while preserving user-defined entries and the managed template entry.
 
 ## Release History
+
+### 0.1.3 (2026-05-04)
+
+- Switched run/test command templates from user settings to fixed internal templates.
+- Added managed template env keys `PYTHON_LAUNCHPAD_RUN_COMMAND` and `PYTHON_LAUNCHPAD_TEST_COMMAND`.
+- Updated run/debug flows to resolve execution commands from managed target `env` values with safe fallbacks.
+- Changed managed target creation to copy only the relevant command template env key (run vs test) while preserving other env entries.
+- Kept existing managed target configurations intact on rerun/debug, including legacy-name reuse when the program path matches.
+- Changed managed target naming to use filename-only format (`<prefix>: <python-file-name>`).
+- Standardized default cwd behavior to workspace root for run tasks and pytest/unittest debug configs.
+- Removed `runCommandTemplate` and `testCommandTemplate` extension settings.
+- Added tests covering env-based template resolution and selective command-template env copying.
 
 ### 0.1.2 (2026-05-02)
 

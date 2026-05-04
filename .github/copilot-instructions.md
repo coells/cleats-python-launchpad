@@ -19,7 +19,8 @@
     - file is Python,
     - file is inside an open workspace folder.
 - Persist last valid target per workspace.
-- Build run commands from VS Code settings templates (`cleatsPythonLaunchpad.runCommandTemplate` and `cleatsPythonLaunchpad.testCommandTemplate`).
+- Build run commands from hardcoded internal templates.
+- Include both template constants in managed launch configurations as environment variables.
 - Keep managed launch.json template entries focused on debug/launch defaults only; do not store run command metadata in launch configurations.
 - In multi-root workspaces, resolve managed launch target by `cleatsPythonLaunchpad.launchJsonPath` when configured.
 - Declare dependency on `ms-python.python` in the extension manifest.
@@ -34,8 +35,6 @@
 
 ## Configuration Requirements
 
-- Keep `cleatsPythonLaunchpad.runCommandTemplate`.
-- Keep `cleatsPythonLaunchpad.testCommandTemplate`.
 - Keep `cleatsPythonLaunchpad.generatedLaunchNamePrefix`.
 - Keep `cleatsPythonLaunchpad.launchJsonPath`.
 - Keep `cleatsPythonLaunchpad.managedTargetConfigurationLimit`.

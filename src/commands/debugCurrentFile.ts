@@ -11,6 +11,7 @@ import { buildUnittestDebugConfig } from "../debug/unittestDebugConfig.js";
 import { ensureManagedLaunchConfig } from "../launch/managedLaunchConfigs.js";
 import { ensurePythonExtension } from "../python/pythonExtension.js";
 import { resolveActivePythonTarget } from "../resolvePythonTarget.js";
+import { RUN_COMMAND_TEMPLATE_ENV_KEY, TEST_COMMAND_TEMPLATE_ENV_KEY } from "../run/commandTemplate.js";
 import { resolvePytestTargetForPosition } from "../run/pytestTarget.js";
 import { isTestFile, resolveConfiguredTestFramework } from "../run/testFramework.js";
 import { resolveUnittestTargetForPosition } from "../run/unittestTarget.js";
@@ -36,11 +37,17 @@ export async function debugCurrentFile(
         return;
     }
 
+    const testFramework = isTestFile(target.fileBasename)
+        ? (resolveConfiguredTestFramework(target) ?? "pytest")
+        : undefined;
+    const commandTemplateEnvKeyToCopy = testFramework ? TEST_COMMAND_TEMPLATE_ENV_KEY : RUN_COMMAND_TEMPLATE_ENV_KEY;
+
     const managed = await ensureManagedLaunchConfig(
         target,
         generatedLaunchNamePrefix,
         launchJsonPath,
         managedTargetConfigurationLimit,
+        commandTemplateEnvKeyToCopy,
     );
     const isBusy = isDebugTargetBusy(target);
     if (isBusy && !debugOpenNewTerminalIfBusy) {
@@ -52,9 +59,6 @@ export async function debugCurrentFile(
 
     const openNewDebugTerminal = shouldOpenNewDebugTerminalIfBusy(target, debugOpenNewTerminalIfBusy);
 
-    const testFramework = isTestFile(target.fileBasename)
-        ? (resolveConfiguredTestFramework(target) ?? "pytest")
-        : undefined;
     if (testFramework === "pytest") {
         const activePosition = vscode.window.activeTextEditor?.selection.active;
         const pytestSelection = resolvePytestTargetForPosition(target, activePosition);

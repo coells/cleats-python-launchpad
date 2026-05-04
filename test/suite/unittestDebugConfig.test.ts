@@ -8,6 +8,11 @@ void test("buildUnittestDebugConfig creates a debugpy unittest launch config", (
     const target = {
         fileBasename: "test_launchpad_samples.py",
         fileDirname: "/workspace/python-samples/src",
+        workspaceFolder: {
+            uri: {
+                fsPath: "/workspace",
+            },
+        },
     } as unknown as ResolvedPythonTarget;
 
     const config = buildUnittestDebugConfig(target, "tests.test_launchpad_samples.TestRun.test_hello");
@@ -16,7 +21,7 @@ void test("buildUnittestDebugConfig creates a debugpy unittest launch config", (
     assert.equal(config.request, "launch");
     assert.equal(config.module, "unittest");
     assert.deepEqual(config.args, ["tests.test_launchpad_samples.TestRun.test_hello"]);
-    assert.equal(config.cwd, "/workspace/python-samples/src");
+    assert.equal(config.cwd, "/workspace");
     assert.equal(config.console, "integratedTerminal");
     assert.equal(config.justMyCode, true);
 });
@@ -25,6 +30,11 @@ void test("buildUnittestDebugConfig appends -k filter when provided", () => {
     const target = {
         fileBasename: "test_launchpad_samples.py",
         fileDirname: "/workspace/python-samples/src",
+        workspaceFolder: {
+            uri: {
+                fsPath: "/workspace",
+            },
+        },
     } as unknown as ResolvedPythonTarget;
 
     const config = buildUnittestDebugConfig(
@@ -44,6 +54,11 @@ void test("buildUnittestDebugConfig inherits template-derived debug properties",
     const target = {
         fileBasename: "test_launchpad_samples.py",
         fileDirname: "/workspace/python-samples/src",
+        workspaceFolder: {
+            uri: {
+                fsPath: "/workspace",
+            },
+        },
     } as unknown as ResolvedPythonTarget;
 
     const config = buildUnittestDebugConfig(target, "tests.test_launchpad_samples.TestRun.test_hello", undefined, {

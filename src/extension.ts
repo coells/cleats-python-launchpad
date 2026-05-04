@@ -17,8 +17,6 @@ function getSettings() {
             1,
             Math.floor(configuration.get<number>("managedTargetConfigurationLimit", 10)),
         ),
-        runCommandTemplate: configuration.get<string>("runCommandTemplate", "python {script}"),
-        testCommandTemplate: configuration.get<string>("testCommandTemplate", "python -m pytest {testTarget}"),
         runOpenNewTerminalIfBusy: configuration.get<boolean>("runOpenNewTerminalIfBusy", true),
         debugOpenNewTerminalIfBusy: configuration.get<boolean>("debugOpenNewTerminalIfBusy", true),
         terminalReveal: configuration.get<TerminalRevealSetting>("terminalReveal", "always"),
@@ -33,8 +31,6 @@ export function activate(context: vscode.ExtensionContext): void {
             const settings = getSettings();
             await runCurrentFile(
                 lastTargetStore,
-                settings.runCommandTemplate,
-                settings.testCommandTemplate,
                 settings.terminalReveal,
                 settings.generatedLaunchNamePrefix,
                 settings.runOpenNewTerminalIfBusy,
@@ -46,8 +42,6 @@ export function activate(context: vscode.ExtensionContext): void {
             const settings = getSettings();
             await runLastFile(
                 lastTargetStore,
-                settings.runCommandTemplate,
-                settings.testCommandTemplate,
                 settings.terminalReveal,
                 settings.generatedLaunchNamePrefix,
                 settings.runOpenNewTerminalIfBusy,

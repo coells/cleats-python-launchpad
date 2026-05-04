@@ -15,8 +15,6 @@ function stripManagedMetadata(config: vscode.DebugConfiguration): vscode.DebugCo
 
     delete (normalized as Record<string, unknown>).managedBy;
     delete (normalized as Record<string, unknown>).managedRole;
-    delete (normalized as Record<string, unknown>).runCommandTemplate;
-    delete (normalized as Record<string, unknown>).runCommandTemplateRef;
     return normalized;
 }
 
@@ -39,7 +37,7 @@ export function buildUnittestDebugConfig(
         request: typeof base.request === "string" ? base.request : "launch",
         module: "unittest",
         args,
-        cwd: typeof base.cwd === "string" && base.cwd !== "${fileDirname}" ? base.cwd : target.fileDirname,
+        cwd: typeof base.cwd === "string" && base.cwd.trim().length > 0 ? base.cwd : target.workspaceFolder.uri.fsPath,
         console: typeof base.console === "string" ? base.console : "integratedTerminal",
         justMyCode: typeof base.justMyCode === "boolean" ? base.justMyCode : true,
     };
