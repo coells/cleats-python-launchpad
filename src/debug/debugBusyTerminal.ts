@@ -56,12 +56,7 @@ function isDebugConfigurationForTarget(configuration: Record<string, unknown>, t
     }
 
     const args = Array.isArray(configuration.args) ? configuration.args : [];
-    if (hasTargetPathArgument(args, target.filePath)) {
-        return true;
-    }
-
-    const name = typeof configuration.name === "string" ? configuration.name : "";
-    return name.includes(target.fileBasename);
+    return hasTargetPathArgument(args, target.filePath);
 }
 
 export function isDebugTargetBusy(target: ResolvedPythonTarget): boolean {
@@ -95,16 +90,25 @@ export function shouldOpenNewDebugTerminalIfBusy(
 }
 
 export function withDebugInvocationSuffix(
-    debugConfig: vscode.DebugConfiguration,
+    nameOrConfiguration: string | vscode.DebugConfiguration,
     openNewTerminal: boolean,
-): vscode.DebugConfiguration {
+    fallbackConfiguration?: vscode.DebugConfiguration,
+): string | vscode.DebugConfiguration {
     if (!openNewTerminal) {
-        return debugConfig;
+        return nameOrConfiguration;
     }
 
-    const baseName = typeof debugConfig.name === "string" ? debugConfig.name : "Debug";
+    const baseConfiguration =
+        typeof nameOrConfiguration === "string"
+            ? ((fallbackConfiguration ?? {
+                  type: "debugpy",
+                  request: "launch",
+                  name: nameOrConfiguration,
+              }) as vscode.DebugConfiguration)
+            : nameOrConfiguration;
+    const baseName = typeof baseConfiguration.name === "string" ? baseConfiguration.name : "Debug";
     return {
-        ...debugConfig,
+        ...baseConfiguration,
         name: `${baseName} (${Date.now()})`,
     };
 }
@@ -112,7 +116,7 @@ export function withDebugInvocationSuffix(
 export async function startDebuggingWithBusyTracking(
     target: ResolvedPythonTarget,
     launchWorkspaceFolder: vscode.WorkspaceFolder | undefined,
-    debugConfig: vscode.DebugConfiguration,
+    debugConfig: string | vscode.DebugConfiguration,
 ): Promise<boolean> {
     markDebugTargetStarting(target);
     try {

@@ -2,7 +2,7 @@
     "name": "cleats-python-launchpad",
     "displayName": "Cleats: Python Launchpad",
     "description": "Run and debug the current or last Python file with minimal setup.",
-    "version": "0.1.3",
+    "version": "0.1.4",
     "publisher": "coells",
     "author": "Tomas Bouda",
     "license": "MIT",
@@ -89,16 +89,35 @@
                     "default": "Launchpad",
                     "description": "Prefix used for launch.json entries managed by Cleats: Python Launchpad."
                 },
+                "cleatsPythonLaunchpad.runCommandTemplate": {
+                    "type": "string",
+                    "default": "python {script}",
+                    "description": "Command template for running script targets. Supports placeholders such as {script}, {workspaceFolder}, {fileDirname}, and {fileBasename}."
+                },
+                "cleatsPythonLaunchpad.testCommandTemplate": {
+                    "type": "string",
+                    "default": "python -m pytest {testTarget}",
+                    "description": "Command template for running test targets. Supports placeholders such as {testTarget}, {testFunction}, {workspaceFolder}, and {fileDirname}."
+                },
                 "cleatsPythonLaunchpad.launchJsonPath": {
                     "type": "string",
-                    "default": "",
                     "description": "Optional path to the launch.json file Cleats should manage in multi-root workspaces. You can provide an absolute path to launch.json or a folder path (which maps to <folder>/.vscode/launch.json). Empty means use the Python file's own workspace folder."
                 },
                 "cleatsPythonLaunchpad.managedTargetConfigurationLimit": {
                     "type": "number",
                     "minimum": 1,
-                    "default": 10,
-                    "description": "Maximum number of managed Launchpad target configurations to keep in launch.json per workspace folder. When exceeded, the oldest managed targets are removed while preserving user-managed configurations and the managed template."
+                    "default": 20,
+                    "description": "Maximum number of managed Launchpad target configurations to keep in launch.json per workspace folder. When exceeded, the oldest managed targets are removed while preserving user-managed configurations."
+                },
+                "cleatsPythonLaunchpad.launchConfigurationTemplate": {
+                    "type": "object",
+                    "default": {},
+                    "description": "JSON object used as a base template for managed launch configurations. Any provided keys override Launchpad defaults while preserving managed naming and grouping."
+                },
+                "cleatsPythonLaunchpad.executeDialogEnabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "When enabled, first execution of an unmanaged Python target shows a setup dialog before creating its managed launch configuration."
                 },
                 "cleatsPythonLaunchpad.runOpenNewTerminalIfBusy": {
                     "type": "boolean",

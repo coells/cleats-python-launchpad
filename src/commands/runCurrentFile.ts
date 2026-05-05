@@ -16,14 +16,19 @@ import { isTestFile, resolveConfiguredTestFramework } from "../run/testFramework
 import { resolveUnittestTargetForPosition } from "../run/unittestTarget.js";
 import type { LastTargetStore } from "../state/lastTargetStore.js";
 import type { TerminalRevealSetting } from "../types.js";
+import { resolveSettingsForExecution } from "./executeDialogSettings.js";
 
 export async function runCurrentFile(
     lastTargetStore: LastTargetStore,
     terminalReveal: TerminalRevealSetting,
     generatedLaunchNamePrefix: string,
     runOpenNewTerminalIfBusy: boolean,
+    configuredRunCommandTemplate: string,
+    configuredTestCommandTemplate: string,
     launchJsonPath: string,
     managedTargetConfigurationLimit: number,
+    launchConfigurationTemplate: Record<string, unknown>,
+    executeDialogEnabled: boolean,
 ): Promise<void> {
     const target = await resolveActivePythonTarget();
     if (!target) {
@@ -34,13 +39,30 @@ export async function runCurrentFile(
         ? (resolveConfiguredTestFramework(target) ?? "pytest")
         : undefined;
     const commandTemplateEnvKeyToCopy = testFramework ? TEST_COMMAND_TEMPLATE_ENV_KEY : RUN_COMMAND_TEMPLATE_ENV_KEY;
+    const executionSettings = await resolveSettingsForExecution(
+        target,
+        {
+            generatedLaunchNamePrefix,
+            launchJsonPath,
+            managedTargetConfigurationLimit,
+            launchConfigurationTemplate,
+            runCommandTemplate: configuredRunCommandTemplate,
+            testCommandTemplate: configuredTestCommandTemplate,
+        },
+        commandTemplateEnvKeyToCopy,
+        executeDialogEnabled,
+    );
+    if (!executionSettings) {
+        return;
+    }
 
     const managed = await ensureManagedLaunchConfig(
         target,
-        generatedLaunchNamePrefix,
-        launchJsonPath,
-        managedTargetConfigurationLimit,
+        executionSettings.generatedLaunchNamePrefix,
+        executionSettings.launchJsonPath,
         commandTemplateEnvKeyToCopy,
+        executionSettings.managedTargetConfigurationLimit,
+        executionSettings.launchConfigurationTemplate,
     );
     const managedDebugConfig = managed.debugConfig as Record<string, unknown>;
     const managedRunEnvironment = await resolveManagedRunEnvironment(

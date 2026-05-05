@@ -5,7 +5,7 @@ import { expandCommandTemplate, resolveCommandTemplateFromEnv } from "../../src/
 
 void test("expandCommandTemplate replaces all supported placeholders", () => {
     const result = expandCommandTemplate(
-        "uv run python {script} --cwd {fileDirname} --name {fileBasename} --root {workspaceFolder}",
+        "python {script} --cwd {fileDirname} --name {fileBasename} --root {workspaceFolder}",
         {
             fileBasename: "hello.py",
             fileDirname: "/workspace/python-samples/src",
@@ -16,7 +16,7 @@ void test("expandCommandTemplate replaces all supported placeholders", () => {
         },
     );
 
-    assert.match(result, /uv run python/);
+    assert.match(result, /python/);
     assert.match(result, /hello\.py/);
     assert.match(result, /python-samples\/src/);
     assert.match(result, /\/workspace/);
@@ -37,7 +37,7 @@ void test("expandCommandTemplate replaces repeated placeholders", () => {
 });
 
 void test("expandCommandTemplate leaves unknown placeholders untouched", () => {
-    const result = expandCommandTemplate("uv run pytest {legacyTarget} -k {legacyFunction}", {
+    const result = expandCommandTemplate("pytest {legacyTarget} -k {legacyFunction}", {
         fileBasename: "test_math.py",
         fileDirname: "/workspace/tests",
         script: "/workspace/tests/test_math.py",
@@ -70,13 +70,13 @@ void test("expandCommandTemplate replaces generic test placeholders", () => {
 void test("resolveCommandTemplateFromEnv returns configured value when present", () => {
     const resolved = resolveCommandTemplateFromEnv(
         {
-            PYTHON_LAUNCHPAD_RUN_COMMAND: "uv run python {script}",
+            PYTHON_LAUNCHPAD_RUN_COMMAND: "python {script}",
         },
         "PYTHON_LAUNCHPAD_RUN_COMMAND",
         "python {script}",
     );
 
-    assert.equal(resolved, "uv run python {script}");
+    assert.equal(resolved, "python {script}");
 });
 
 void test("resolveCommandTemplateFromEnv falls back when env key is missing", () => {

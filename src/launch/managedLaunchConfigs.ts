@@ -5,6 +5,7 @@ import type { ManagedLaunchConfig, ResolvedPythonTarget } from "../types.js";
 import { resolveLaunchWorkspaceFolder } from "./launchWorkspaceFolder.js";
 import {
     getManagedLaunchName,
+    hasManagedLaunchConfigForTarget,
     removeManagedTargetLaunchConfigs,
     upsertManagedLaunchConfig,
 } from "./managedLaunchConfigModel.js";
@@ -19,10 +20,39 @@ export interface RemovedManagedTargetLaunchConfigs {
     updatedWorkspaceFolders: number;
 }
 
+export interface ManagedTargetPresence {
+    exists: boolean;
+    launchWorkspaceFolder: vscode.WorkspaceFolder;
+}
+
 function toDescriptor(target: ResolvedPythonTarget) {
     return {
         filePath: target.filePath,
         workspaceFolderPath: target.workspaceFolder.uri.fsPath,
+        workspaceFolderName: target.workspaceFolder.name,
+    };
+}
+
+export function getManagedTargetPresence(
+    target: ResolvedPythonTarget,
+    prefix: string,
+    configuredLaunchJsonPath: string,
+): ManagedTargetPresence {
+    const launchWorkspaceFolderResolution = resolveLaunchWorkspaceFolder(
+        vscode.workspace.workspaceFolders,
+        target.workspaceFolder,
+        configuredLaunchJsonPath,
+    );
+    const launchConfiguration = vscode.workspace.getConfiguration(
+        "launch",
+        launchWorkspaceFolderResolution.workspaceFolder.uri,
+    );
+    const existingConfigurations = launchConfiguration.get<readonly unknown[]>("configurations", []);
+    const exists = hasManagedLaunchConfigForTarget(existingConfigurations, toDescriptor(target), prefix);
+
+    return {
+        exists,
+        launchWorkspaceFolder: launchWorkspaceFolderResolution.workspaceFolder,
     };
 }
 
@@ -30,8 +60,9 @@ export async function ensureManagedLaunchConfig(
     target: ResolvedPythonTarget,
     prefix: string,
     configuredLaunchJsonPath: string,
+    commandTemplateEnvKeyToCopy: CommandTemplateEnvKey,
     managedTargetConfigurationLimit: number,
-    commandTemplateEnvKeyToCopy?: CommandTemplateEnvKey,
+    launchConfigurationTemplate: Record<string, unknown> = {},
 ): Promise<EnsuredManagedLaunchConfig> {
     // In multi-root workspaces, managed launch entries can be pinned to a specific launch.json path.
     const launchWorkspaceFolderResolution = resolveLaunchWorkspaceFolder(
@@ -55,8 +86,9 @@ export async function ensureManagedLaunchConfig(
         existingConfigurations,
         descriptor,
         prefix,
-        managedTargetConfigurationLimit,
         commandTemplateEnvKeyToCopy,
+        managedTargetConfigurationLimit,
+        launchConfigurationTemplate,
     );
 
     await launchConfiguration.update(

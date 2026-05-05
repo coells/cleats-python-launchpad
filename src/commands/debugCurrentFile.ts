@@ -16,6 +16,7 @@ import { resolvePytestTargetForPosition } from "../run/pytestTarget.js";
 import { isTestFile, resolveConfiguredTestFramework } from "../run/testFramework.js";
 import { resolveUnittestTargetForPosition } from "../run/unittestTarget.js";
 import type { LastTargetStore } from "../state/lastTargetStore.js";
+import { resolveSettingsForExecution } from "./executeDialogSettings.js";
 
 /**
  * Debugs the active Python target.
@@ -24,9 +25,13 @@ import type { LastTargetStore } from "../state/lastTargetStore.js";
 export async function debugCurrentFile(
     lastTargetStore: LastTargetStore,
     generatedLaunchNamePrefix: string,
+    runCommandTemplate: string,
+    testCommandTemplate: string,
     launchJsonPath: string,
     managedTargetConfigurationLimit: number,
     debugOpenNewTerminalIfBusy: boolean,
+    launchConfigurationTemplate: Record<string, unknown>,
+    executeDialogEnabled: boolean,
 ): Promise<void> {
     const target = await resolveActivePythonTarget();
     if (!target) {
@@ -41,13 +46,30 @@ export async function debugCurrentFile(
         ? (resolveConfiguredTestFramework(target) ?? "pytest")
         : undefined;
     const commandTemplateEnvKeyToCopy = testFramework ? TEST_COMMAND_TEMPLATE_ENV_KEY : RUN_COMMAND_TEMPLATE_ENV_KEY;
+    const executionSettings = await resolveSettingsForExecution(
+        target,
+        {
+            generatedLaunchNamePrefix,
+            launchJsonPath,
+            managedTargetConfigurationLimit,
+            launchConfigurationTemplate,
+            runCommandTemplate,
+            testCommandTemplate,
+        },
+        commandTemplateEnvKeyToCopy,
+        executeDialogEnabled,
+    );
+    if (!executionSettings) {
+        return;
+    }
 
     const managed = await ensureManagedLaunchConfig(
         target,
-        generatedLaunchNamePrefix,
-        launchJsonPath,
-        managedTargetConfigurationLimit,
+        executionSettings.generatedLaunchNamePrefix,
+        executionSettings.launchJsonPath,
         commandTemplateEnvKeyToCopy,
+        executionSettings.managedTargetConfigurationLimit,
+        executionSettings.launchConfigurationTemplate,
     );
     const isBusy = isDebugTargetBusy(target);
     if (isBusy && !debugOpenNewTerminalIfBusy) {
@@ -109,7 +131,7 @@ export async function debugCurrentFile(
     const started = await startDebuggingWithBusyTracking(
         target,
         managed.launchWorkspaceFolder,
-        withDebugInvocationSuffix(managed.debugConfig, openNewDebugTerminal),
+        withDebugInvocationSuffix(managed.debugConfig.name as string, openNewDebugTerminal, managed.debugConfig),
     );
     if (!started) {
         await vscode.window.showErrorMessage(`Failed to start debugging for ${target.fileBasename}.`);

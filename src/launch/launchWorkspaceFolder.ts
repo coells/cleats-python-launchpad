@@ -1,5 +1,4 @@
 import * as path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import type * as vscode from "vscode";
 
@@ -17,30 +16,21 @@ function normalizePath(value: string): string {
 }
 
 function toFileSystemPath(value: string): string {
-    const trimmed = value.trim();
-    if (trimmed.startsWith("file://")) {
-        try {
-            return normalizePath(fileURLToPath(trimmed));
-        } catch {
-            return normalizePath(trimmed);
-        }
-    }
-
-    return normalizePath(trimmed);
+    return normalizePath(value.trim());
 }
 
-function toLaunchJsonPath(configuredLaunchJsonPath: string, defaultWorkspaceFolder: vscode.WorkspaceFolder): string {
+function toLaunchJsonPath(configuredLaunchJsonPath: string): string {
     const configuredPath = toFileSystemPath(configuredLaunchJsonPath);
-    const resolvedPath = path.isAbsolute(configuredPath)
-        ? configuredPath
-        : path.resolve(defaultWorkspaceFolder.uri.fsPath, configuredPath);
-
-    if (path.basename(resolvedPath) === LAUNCH_JSON_BASENAME) {
-        return normalizePath(resolvedPath);
+    if (!path.isAbsolute(configuredPath)) {
+        return configuredPath;
     }
 
-    // Backward-compatible: if a folder path is provided, map it to .vscode/launch.json.
-    return normalizePath(path.join(resolvedPath, RELATIVE_LAUNCH_JSON_PATH));
+    if (path.basename(configuredPath) === LAUNCH_JSON_BASENAME) {
+        return normalizePath(configuredPath);
+    }
+
+    // If a folder path is provided, map it to .vscode/launch.json.
+    return normalizePath(path.join(configuredPath, RELATIVE_LAUNCH_JSON_PATH));
 }
 
 function getWorkspaceLaunchJsonPath(workspaceFolder: vscode.WorkspaceFolder): string {
@@ -62,7 +52,7 @@ export function resolveLaunchWorkspaceFolder(
     }
 
     const folders = workspaceFolders ?? [];
-    const normalizedLaunchJsonPath = toLaunchJsonPath(configured, defaultWorkspaceFolder);
+    const normalizedLaunchJsonPath = toLaunchJsonPath(configured);
     const byLaunchJsonPath = folders.find(
         (candidate) => getWorkspaceLaunchJsonPath(candidate) === normalizedLaunchJsonPath,
     );

@@ -11,9 +11,9 @@ import { type ManagedLaunchConfig } from "../types.js";
 export interface LaunchTargetDescriptor {
     filePath: string;
     workspaceFolderPath: string;
+    workspaceFolderName?: string;
 }
 
-const TEMPLATE_MARKER_TYPE = "template";
 const TARGET_MARKER_TYPE = "target";
 
 const CONFIG_KEY_ORDER = [
@@ -32,13 +32,6 @@ const CONFIG_KEY_ORDER = [
     "presentation",
 ];
 
-interface ManagedRunTemplateConfig extends ManagedLaunchConfig {
-    presentation?: {
-        group?: string;
-        hidden?: boolean;
-    };
-}
-
 type ManagedTargetLaunchConfig = ManagedLaunchConfig;
 
 export interface UpsertManagedLaunchResult {
@@ -54,6 +47,10 @@ export interface RemoveManagedTargetLaunchResult {
 function resolveNamePrefix(prefix: string): string {
     const trimmed = prefix.trim();
     return trimmed.length > 0 ? trimmed : "Launchpad";
+}
+
+function escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function orderConfigKeys(config: Record<string, unknown>): ManagedLaunchConfig {
@@ -80,10 +77,6 @@ export function getManagedLaunchName(descriptor: LaunchTargetDescriptor, prefix:
     return `${resolveNamePrefix(prefix)}: ${basename(descriptor.filePath)}`;
 }
 
-export function getManagedRunTemplateName(prefix: string): string {
-    return `${resolveNamePrefix(prefix)}: Template`;
-}
-
 function getManagedPresentationGroup(prefix: string): string {
     return resolveNamePrefix(prefix);
 }
@@ -102,15 +95,10 @@ function getPresentationGroup(config: Record<string, unknown>): string | undefin
     return typeof presentation?.group === "string" ? presentation.group : undefined;
 }
 
-function getPresentationHidden(config: Record<string, unknown>): boolean | undefined {
-    const presentation = getPresentation(config);
-    return typeof presentation?.hidden === "boolean" ? presentation.hidden : undefined;
-}
-
 function isManagedTargetName(name: string, prefix: string): boolean {
-    const runTemplateName = getManagedRunTemplateName(prefix);
-    const managedPrefix = `${resolveNamePrefix(prefix)}: `;
-    return name !== runTemplateName && name.startsWith(managedPrefix) && name.length > managedPrefix.length;
+    const normalizedPrefix = resolveNamePrefix(prefix);
+    const managedNamePattern = new RegExp(`^${escapeRegExp(normalizedPrefix)}: [^/\\\\]+(?: \\([1-9][0-9]*\\))?$`);
+    return managedNamePattern.test(name);
 }
 
 export function isManagedLaunchConfig(value: unknown, prefix = "Launchpad"): value is ManagedLaunchConfig {
@@ -121,18 +109,7 @@ export function isManagedLaunchConfig(value: unknown, prefix = "Launchpad"): val
     return getManagedType(value as Record<string, unknown>, prefix) !== undefined;
 }
 
-function isManagedRunTemplateConfig(value: unknown, prefix: string): value is ManagedRunTemplateConfig {
-    if (!isManagedLaunchConfig(value, prefix)) {
-        return false;
-    }
-
-    return getManagedType(value as Record<string, unknown>, prefix) === TEMPLATE_MARKER_TYPE;
-}
-
-function getManagedType(
-    config: Record<string, unknown>,
-    prefix: string,
-): typeof TEMPLATE_MARKER_TYPE | typeof TARGET_MARKER_TYPE | undefined {
+function getManagedType(config: Record<string, unknown>, prefix: string): typeof TARGET_MARKER_TYPE | undefined {
     const name = typeof config.name === "string" ? config.name : undefined;
     if (!name) {
         return undefined;
@@ -140,15 +117,7 @@ function getManagedType(
 
     const managedGroup = getManagedPresentationGroup(prefix);
     const presentationGroup = getPresentationGroup(config);
-    const presentationHidden = getPresentationHidden(config);
 
-    if (
-        name === getManagedRunTemplateName(prefix) &&
-        presentationGroup === managedGroup &&
-        presentationHidden === true
-    ) {
-        return TEMPLATE_MARKER_TYPE;
-    }
     if (isManagedTargetName(name, prefix) && presentationGroup === managedGroup) {
         return TARGET_MARKER_TYPE;
     }
@@ -156,15 +125,63 @@ function getManagedType(
     return undefined;
 }
 
-function normalizeManagedTemplateEnv(env: unknown): Record<string, unknown> {
-    const normalized = env && typeof env === "object" ? { ...(env as Record<string, unknown>) } : {};
-    if (typeof normalized[RUN_COMMAND_TEMPLATE_ENV_KEY] !== "string") {
-        normalized[RUN_COMMAND_TEMPLATE_ENV_KEY] = RUN_COMMAND_TEMPLATE;
+function getProgramPath(config: Record<string, unknown>): string | undefined {
+    return typeof config.program === "string" ? config.program : undefined;
+}
+
+function isManagedConfigForTarget(
+    config: Record<string, unknown>,
+    descriptor: LaunchTargetDescriptor,
+    prefix: string,
+): boolean {
+    return getManagedType(config, prefix) === TARGET_MARKER_TYPE && getProgramPath(config) === descriptor.filePath;
+}
+
+function resolveUniqueManagedLaunchName(existingConfigurations: readonly unknown[], baseName: string): string {
+    const existingNames = new Set<string>();
+
+    for (const candidate of existingConfigurations) {
+        if (!candidate || typeof candidate !== "object") {
+            continue;
+        }
+
+        const name = (candidate as Record<string, unknown>).name;
+        if (typeof name === "string") {
+            existingNames.add(name);
+        }
     }
-    if (typeof normalized[TEST_COMMAND_TEMPLATE_ENV_KEY] !== "string") {
-        normalized[TEST_COMMAND_TEMPLATE_ENV_KEY] = TEST_COMMAND_TEMPLATE;
+
+    if (!existingNames.has(baseName)) {
+        return baseName;
     }
-    return normalized;
+
+    let suffix = 2;
+    while (existingNames.has(`${baseName} (${suffix})`)) {
+        suffix += 1;
+    }
+
+    return `${baseName} (${suffix})`;
+}
+
+export function hasManagedLaunchConfigForTarget(
+    existingConfigurations: readonly unknown[],
+    descriptor: LaunchTargetDescriptor,
+    prefix: string,
+): boolean {
+    return existingConfigurations.some(
+        (candidate) =>
+            !!candidate &&
+            typeof candidate === "object" &&
+            isManagedConfigForTarget(candidate as Record<string, unknown>, descriptor, prefix),
+    );
+}
+
+function normalizeLaunchConfigurationTemplate(value: unknown): Record<string, unknown> {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        return {};
+    }
+
+    return { ...(value as Record<string, unknown>) };
 }
 
 function resolveTemplateCommandValue(env: Record<string, unknown>, envKey: CommandTemplateEnvKey): string {
@@ -178,13 +195,9 @@ function resolveTemplateCommandValue(env: Record<string, unknown>, envKey: Comma
 
 function selectCommandTemplateEnv(
     env: unknown,
-    commandTemplateEnvKeyToCopy?: CommandTemplateEnvKey,
+    commandTemplateEnvKeyToCopy: CommandTemplateEnvKey,
 ): Record<string, unknown> {
     const normalized = env && typeof env === "object" ? { ...(env as Record<string, unknown>) } : {};
-    if (!commandTemplateEnvKeyToCopy) {
-        return normalizeManagedTemplateEnv(normalized);
-    }
-
     const selectedCommandValue = resolveTemplateCommandValue(normalized, commandTemplateEnvKeyToCopy);
 
     delete normalized[RUN_COMMAND_TEMPLATE_ENV_KEY];
@@ -199,7 +212,7 @@ function stripManagedMetadata(config: Record<string, unknown>): Record<string, u
     };
 
     for (const key of Object.keys(normalized)) {
-        if (key.startsWith("cleatsLaunchpad") || key.startsWith("cleatsPythonLaunchpad")) {
+        if (key.startsWith("cleatsPythonLaunchpad")) {
             delete normalized[key];
         }
     }
@@ -211,47 +224,12 @@ function stripManagedMetadata(config: Record<string, unknown>): Record<string, u
     return normalized;
 }
 
-function buildManagedRunTemplateConfig(prefix: string): ManagedRunTemplateConfig {
-    return orderConfigKeys({
-        name: getManagedRunTemplateName(prefix),
-        type: "debugpy",
-        request: "launch",
-        program: "${file}",
-        cwd: "${workspaceFolder}",
-        console: "integratedTerminal",
-        justMyCode: true,
-        env: normalizeManagedTemplateEnv(undefined),
-        presentation: {
-            group: getManagedPresentationGroup(prefix),
-            hidden: true,
-        },
-    }) as ManagedRunTemplateConfig;
-}
+function buildTargetTemplateBase(launchConfigurationTemplate: Record<string, unknown>): Record<string, unknown> {
+    const configuredOverrides = stripManagedMetadata(normalizeLaunchConfigurationTemplate(launchConfigurationTemplate));
 
-function resolveRunTemplateConfig(
-    existingConfigurations: readonly unknown[],
-    prefix: string,
-): ManagedRunTemplateConfig {
-    const runTemplateName = getManagedRunTemplateName(prefix);
-    const existingTemplate = existingConfigurations.find((candidate): candidate is ManagedRunTemplateConfig => {
-        if (!isManagedRunTemplateConfig(candidate, prefix)) {
-            return false;
-        }
+    delete configuredOverrides.name;
 
-        return candidate.name === runTemplateName;
-    });
-
-    if (!existingTemplate) {
-        return buildManagedRunTemplateConfig(prefix);
-    }
-
-    return existingTemplate;
-}
-
-function buildTargetTemplateBase(runTemplateConfig: ManagedRunTemplateConfig): Record<string, unknown> {
-    const templateBase = stripManagedMetadata(runTemplateConfig as Record<string, unknown>);
-    delete templateBase.name;
-    return templateBase;
+    return configuredOverrides;
 }
 
 function buildTargetPresentation(source: unknown, prefix: string): Record<string, unknown> {
@@ -265,17 +243,27 @@ function buildTargetPresentation(source: unknown, prefix: string): Record<string
     };
 }
 
+function getDefaultManagedCwd(descriptor: LaunchTargetDescriptor): string {
+    const workspaceFolderName = descriptor.workspaceFolderName?.trim();
+    if (!workspaceFolderName) {
+        return "${workspaceFolder}";
+    }
+
+    return `\${workspaceFolder:${workspaceFolderName}}`;
+}
+
 export function buildManagedLaunchConfig(
     descriptor: LaunchTargetDescriptor,
     prefix: string,
+    commandTemplateEnvKeyToCopy: CommandTemplateEnvKey,
     templateBase: Record<string, unknown> = {},
-    commandTemplateEnvKeyToCopy?: CommandTemplateEnvKey,
+    managedName?: string,
 ): ManagedTargetLaunchConfig {
     const targetPresentation = buildTargetPresentation(templateBase.presentation, prefix);
     const resolvedCwd =
         typeof templateBase.cwd === "string" && templateBase.cwd.trim().length > 0
             ? templateBase.cwd
-            : descriptor.workspaceFolderPath;
+            : getDefaultManagedCwd(descriptor);
     const resolvedEnv = selectCommandTemplateEnv(templateBase.env, commandTemplateEnvKeyToCopy);
 
     return orderConfigKeys({
@@ -284,7 +272,7 @@ export function buildManagedLaunchConfig(
         console: "integratedTerminal",
         justMyCode: true,
         ...templateBase,
-        name: getManagedLaunchName(descriptor, prefix),
+        name: managedName ?? getManagedLaunchName(descriptor, prefix),
         program: descriptor.filePath,
         cwd: resolvedCwd,
         env: resolvedEnv,
@@ -296,22 +284,13 @@ export function upsertManagedLaunchConfig(
     existingConfigurations: readonly unknown[],
     descriptor: LaunchTargetDescriptor,
     prefix: string,
+    commandTemplateEnvKeyToCopy: CommandTemplateEnvKey,
     managedTargetConfigurationLimit = 10,
-    commandTemplateEnvKeyToCopy?: CommandTemplateEnvKey,
+    launchConfigurationTemplate: Record<string, unknown> = {},
 ): UpsertManagedLaunchResult {
-    const runTemplateConfig = resolveRunTemplateConfig(existingConfigurations, prefix);
-    const nextConfiguration = buildManagedLaunchConfig(
-        descriptor,
-        prefix,
-        buildTargetTemplateBase(runTemplateConfig),
-        commandTemplateEnvKeyToCopy,
-    );
-    const nextName = nextConfiguration.name;
-    let debugConfig = nextConfiguration;
-
+    const targetTemplateBase = buildTargetTemplateBase(launchConfigurationTemplate);
     const preserved: ManagedLaunchConfig[] = [];
-    let hasManagedTemplate = false;
-    let replacedExistingTarget = false;
+    let existingTargetConfig: ManagedLaunchConfig | undefined;
 
     for (const candidate of existingConfigurations) {
         if (!candidate || typeof candidate !== "object") {
@@ -319,56 +298,41 @@ export function upsertManagedLaunchConfig(
         }
 
         const config = candidate as Record<string, unknown>;
-        const role = getManagedType(config, prefix);
+        preserved.push(candidate as ManagedLaunchConfig);
 
-        if (!role) {
-            preserved.push(candidate as ManagedLaunchConfig);
+        if (existingTargetConfig) {
             continue;
         }
 
-        if (role === TEMPLATE_MARKER_TYPE) {
-            if (!hasManagedTemplate) {
-                preserved.push(candidate as ManagedLaunchConfig);
-                hasManagedTemplate = true;
-            }
-            continue;
+        if (isManagedConfigForTarget(config, descriptor, prefix)) {
+            existingTargetConfig = candidate as ManagedLaunchConfig;
         }
+    }
 
-        const existingProgram = typeof config.program === "string" ? config.program : undefined;
-        const isSameTarget = existingProgram ? existingProgram === descriptor.filePath : config.name === nextName;
-        if (isSameTarget) {
-            preserved.push(candidate as ManagedLaunchConfig);
-            debugConfig = candidate as ManagedLaunchConfig;
-            replacedExistingTarget = true;
-            continue;
-        }
-
-        const strippedConfig = stripManagedMetadata(config) as ManagedLaunchConfig;
-        const migratedTarget = {
-            ...strippedConfig,
-            type: typeof strippedConfig.type === "string" ? strippedConfig.type : "debugpy",
-            request: typeof strippedConfig.request === "string" ? strippedConfig.request : "launch",
-            name: typeof strippedConfig.name === "string" ? strippedConfig.name : "",
-            presentation: buildTargetPresentation(strippedConfig.presentation, prefix),
+    if (existingTargetConfig) {
+        return {
+            configurations: preserved,
+            debugConfig: existingTargetConfig,
         };
-        preserved.push(orderConfigKeys(migratedTarget as Record<string, unknown>));
     }
 
-    if (!hasManagedTemplate) {
-        preserved.push(runTemplateConfig);
-    }
-
-    if (!replacedExistingTarget) {
-        preserved.push(nextConfiguration);
-        debugConfig = nextConfiguration;
-    }
+    const baseManagedName = getManagedLaunchName(descriptor, prefix);
+    const resolvedManagedName = resolveUniqueManagedLaunchName(existingConfigurations, baseManagedName);
+    const nextConfiguration = buildManagedLaunchConfig(
+        descriptor,
+        prefix,
+        commandTemplateEnvKeyToCopy,
+        targetTemplateBase,
+        resolvedManagedName,
+    );
+    preserved.push(nextConfiguration);
 
     const targetLimit = Math.max(1, Math.floor(managedTargetConfigurationLimit));
     const trimmed = trimManagedTargetsToLimit(preserved, prefix, targetLimit);
 
     return {
         configurations: trimmed,
-        debugConfig,
+        debugConfig: nextConfiguration,
     };
 }
 

@@ -8,7 +8,7 @@ function stripManagedMetadata(config: vscode.DebugConfiguration): vscode.DebugCo
     };
 
     for (const key of Object.keys(normalized as Record<string, unknown>)) {
-        if (key.startsWith("cleatsLaunchpad") || key.startsWith("cleatsPythonLaunchpad")) {
+        if (key.startsWith("cleatsPythonLaunchpad")) {
             delete (normalized as Record<string, unknown>)[key];
         }
     }

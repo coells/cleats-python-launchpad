@@ -14,18 +14,22 @@ import { runPythonTarget } from "../run/runTask.js";
 import { isTestFile, resolveConfiguredTestFramework } from "../run/testFramework.js";
 import type { LastTargetStore } from "../state/lastTargetStore.js";
 import type { TerminalRevealSetting } from "../types.js";
+import { resolveSettingsForExecution } from "./executeDialogSettings.js";
 
 export async function runLastFile(
     lastTargetStore: LastTargetStore,
     terminalReveal: TerminalRevealSetting,
     generatedLaunchNamePrefix: string,
     runOpenNewTerminalIfBusy: boolean,
+    configuredRunCommandTemplate: string,
+    configuredTestCommandTemplate: string,
     launchJsonPath: string,
     managedTargetConfigurationLimit: number,
+    launchConfigurationTemplate: Record<string, unknown>,
+    executeDialogEnabled: boolean,
 ): Promise<void> {
     const lastTarget = lastTargetStore.get();
     if (!lastTarget) {
-        await vscode.window.showWarningMessage("No previous Python file has been run or debugged in this workspace.");
         return;
     }
 
@@ -46,13 +50,30 @@ export async function runLastFile(
         : undefined;
     const testFramework = lastTarget.testFramework ?? configuredFramework;
     const commandTemplateEnvKeyToCopy = testFramework ? TEST_COMMAND_TEMPLATE_ENV_KEY : RUN_COMMAND_TEMPLATE_ENV_KEY;
+    const executionSettings = await resolveSettingsForExecution(
+        target,
+        {
+            generatedLaunchNamePrefix,
+            launchJsonPath,
+            managedTargetConfigurationLimit,
+            launchConfigurationTemplate,
+            runCommandTemplate: configuredRunCommandTemplate,
+            testCommandTemplate: configuredTestCommandTemplate,
+        },
+        commandTemplateEnvKeyToCopy,
+        executeDialogEnabled,
+    );
+    if (!executionSettings) {
+        return;
+    }
 
     const managed = await ensureManagedLaunchConfig(
         target,
-        generatedLaunchNamePrefix,
-        launchJsonPath,
-        managedTargetConfigurationLimit,
+        executionSettings.generatedLaunchNamePrefix,
+        executionSettings.launchJsonPath,
         commandTemplateEnvKeyToCopy,
+        executionSettings.managedTargetConfigurationLimit,
+        executionSettings.launchConfigurationTemplate,
     );
     const managedDebugConfig = managed.debugConfig as Record<string, unknown>;
     const managedRunEnvironment = await resolveManagedRunEnvironment(

@@ -29,7 +29,7 @@ function makeTarget(overrides: Partial<ResolvedPythonTarget> = {}): ResolvedPyth
 void test("parseEnvFile supports comments, export prefix, and quoted values", () => {
     const parsed = parseEnvFile(`
 # comment
-export PYTHON_LAUNCHPAD_RUN_COMMAND=uv run python {script}
+export PYTHON_LAUNCHPAD_RUN_COMMAND=python {script}
 SPACED = value # inline comment
 QUOTED="hello\\nworld"
 SINGLE='literal # value'
@@ -37,7 +37,7 @@ HASH=value#kept
 EMPTY=
 `);
 
-    assert.equal(parsed.PYTHON_LAUNCHPAD_RUN_COMMAND, "uv run python {script}");
+    assert.equal(parsed.PYTHON_LAUNCHPAD_RUN_COMMAND, "python {script}");
     assert.equal(parsed.SPACED, "value");
     assert.equal(parsed.QUOTED, "hello\nworld");
     assert.equal(parsed.SINGLE, "literal # value");
@@ -64,7 +64,7 @@ void test("mergeManagedRunEnvironment merges envFile and inline env with inline 
         {
             A: "from-file",
             B: "from-file",
-            PYTHON_LAUNCHPAD_RUN_COMMAND: "uv run python {script}",
+            PYTHON_LAUNCHPAD_RUN_COMMAND: "python {script}",
         },
         {
             A: "from-inline",
@@ -77,12 +77,12 @@ void test("mergeManagedRunEnvironment merges envFile and inline env with inline 
 
     assert.equal(merged.commandTemplateEnv.A, "from-inline");
     assert.equal(merged.commandTemplateEnv.B, null);
-    assert.equal(merged.commandTemplateEnv.PYTHON_LAUNCHPAD_RUN_COMMAND, "uv run python {script}");
+    assert.equal(merged.commandTemplateEnv.PYTHON_LAUNCHPAD_RUN_COMMAND, "python {script}");
 
     assert.equal(merged.processEnvOverrides.A, "from-inline");
     assert.equal(merged.processEnvOverrides.B, null);
     assert.equal(merged.processEnvOverrides.C, "42");
     assert.equal(merged.processEnvOverrides.D, "true");
     assert.equal(merged.processEnvOverrides.E, undefined);
-    assert.equal(merged.processEnvOverrides.PYTHON_LAUNCHPAD_RUN_COMMAND, "uv run python {script}");
+    assert.equal(merged.processEnvOverrides.PYTHON_LAUNCHPAD_RUN_COMMAND, "python {script}");
 });

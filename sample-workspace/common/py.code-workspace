@@ -1,0 +1,18 @@
+{
+    "folders": [
+        {
+            "path": ".",
+        },
+        {
+            "path": "../project_a",
+        },
+        {
+            "path": "../project_b",
+        },
+    ],
+    "settings": {
+        "workbench.colorCustomizations": {
+            "titleBar.activeBackground": "#efef8f",
+        },
+    },
+}

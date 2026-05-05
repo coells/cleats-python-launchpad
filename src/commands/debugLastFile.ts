@@ -14,6 +14,7 @@ import { resolveStoredPythonTarget } from "../resolvePythonTarget.js";
 import { RUN_COMMAND_TEMPLATE_ENV_KEY, TEST_COMMAND_TEMPLATE_ENV_KEY } from "../run/commandTemplate.js";
 import { isTestFile, resolveConfiguredTestFramework } from "../run/testFramework.js";
 import type { LastTargetStore } from "../state/lastTargetStore.js";
+import { resolveSettingsForExecution } from "./executeDialogSettings.js";
 
 /**
  * Debugs the most recently resolved Python target.
@@ -22,13 +23,16 @@ import type { LastTargetStore } from "../state/lastTargetStore.js";
 export async function debugLastFile(
     lastTargetStore: LastTargetStore,
     generatedLaunchNamePrefix: string,
+    runCommandTemplate: string,
+    testCommandTemplate: string,
     launchJsonPath: string,
     managedTargetConfigurationLimit: number,
     debugOpenNewTerminalIfBusy: boolean,
+    launchConfigurationTemplate: Record<string, unknown>,
+    executeDialogEnabled: boolean,
 ): Promise<void> {
     const lastTarget = lastTargetStore.get();
     if (!lastTarget) {
-        await vscode.window.showWarningMessage("No previous Python file has been run or debugged in this workspace.");
         return;
     }
 
@@ -53,13 +57,30 @@ export async function debugLastFile(
         : undefined;
     const testFramework = lastTarget.testFramework ?? configuredFramework;
     const commandTemplateEnvKeyToCopy = testFramework ? TEST_COMMAND_TEMPLATE_ENV_KEY : RUN_COMMAND_TEMPLATE_ENV_KEY;
+    const executionSettings = await resolveSettingsForExecution(
+        target,
+        {
+            generatedLaunchNamePrefix,
+            launchJsonPath,
+            managedTargetConfigurationLimit,
+            launchConfigurationTemplate,
+            runCommandTemplate,
+            testCommandTemplate,
+        },
+        commandTemplateEnvKeyToCopy,
+        executeDialogEnabled,
+    );
+    if (!executionSettings) {
+        return;
+    }
 
     const managed = await ensureManagedLaunchConfig(
         target,
-        generatedLaunchNamePrefix,
-        launchJsonPath,
-        managedTargetConfigurationLimit,
+        executionSettings.generatedLaunchNamePrefix,
+        executionSettings.launchJsonPath,
         commandTemplateEnvKeyToCopy,
+        executionSettings.managedTargetConfigurationLimit,
+        executionSettings.launchConfigurationTemplate,
     );
     const isBusy = isDebugTargetBusy(target);
     if (isBusy && !debugOpenNewTerminalIfBusy) {
@@ -118,7 +139,7 @@ export async function debugLastFile(
     const started = await startDebuggingWithBusyTracking(
         target,
         managed.launchWorkspaceFolder,
-        withDebugInvocationSuffix(managed.debugConfig, openNewDebugTerminal),
+        withDebugInvocationSuffix(managed.debugConfig.name as string, openNewDebugTerminal, managed.debugConfig),
     );
     if (!started) {
         await vscode.window.showErrorMessage(`Failed to start debugging for ${target.fileBasename}.`);
