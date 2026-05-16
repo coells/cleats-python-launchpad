@@ -1,7 +1,3 @@
-import * as vscode from "vscode";
-
-import { ensureManagedLaunchConfig } from "../launch/managedLaunchConfigs.js";
-import { resolveStoredPythonTarget } from "../resolvePythonTarget.js";
 import {
     RUN_COMMAND_TEMPLATE,
     RUN_COMMAND_TEMPLATE_ENV_KEY,
@@ -11,19 +7,13 @@ import {
 } from "../run/commandTemplate.js";
 import { resolveManagedRunEnvironment } from "../run/managedRunEnvironment.js";
 import { runPythonTarget } from "../run/runTask.js";
-import { isTestFile, resolveConfiguredTestFramework } from "../run/testFramework.js";
 import type { LastTargetStore } from "../state/lastTargetStore.js";
 import type { TerminalRevealSetting } from "../types.js";
-import { resolveSettingsForExecution } from "./executeDialogSettings.js";
-
-function getNamedWorkspaceFolderPaths(): Record<string, string> {
-    const namedFolders: Record<string, string> = {};
-    for (const workspaceFolder of vscode.workspace.workspaceFolders ?? []) {
-        namedFolders[workspaceFolder.name] = workspaceFolder.uri.fsPath;
-    }
-
-    return namedFolders;
-}
+import {
+    buildNamedWorkspaceFolderPaths,
+    prepareManagedCommandExecution,
+    resolveLastCommandTarget,
+} from "./commandExecution.js";
 
 export async function runLastFile(
     lastTargetStore: LastTargetStore,
@@ -37,29 +27,14 @@ export async function runLastFile(
     launchConfigurationTemplate: Record<string, unknown>,
     executeDialogEnabled: boolean,
 ): Promise<void> {
-    const lastTarget = lastTargetStore.get();
-    if (!lastTarget) {
+    const resolvedLastTarget = await resolveLastCommandTarget(lastTargetStore);
+    if (!resolvedLastTarget) {
         return;
     }
 
-    const target = await resolveStoredPythonTarget(
-        vscode.Uri.file(lastTarget.filePath),
-        lastTarget.workspaceFolderPath,
-    );
-    if (!target) {
-        await lastTargetStore.clear();
-        await vscode.window.showWarningMessage(
-            "The previous Python target is no longer available. Open a Python file and run it again.",
-        );
-        return;
-    }
+    const { lastTarget, target } = resolvedLastTarget;
 
-    const configuredFramework = isTestFile(target.fileBasename)
-        ? (resolveConfiguredTestFramework(target) ?? "pytest")
-        : undefined;
-    const testFramework = lastTarget.testFramework ?? configuredFramework;
-    const commandTemplateEnvKeyToCopy = testFramework ? TEST_COMMAND_TEMPLATE_ENV_KEY : RUN_COMMAND_TEMPLATE_ENV_KEY;
-    const executionSettings = await resolveSettingsForExecution(
+    const preparedExecution = await prepareManagedCommandExecution(
         target,
         {
             generatedLaunchNamePrefix,
@@ -68,22 +43,15 @@ export async function runLastFile(
             launchConfigurationTemplate,
             runCommandTemplate: configuredRunCommandTemplate,
             testCommandTemplate: configuredTestCommandTemplate,
+            executeDialogEnabled,
         },
-        commandTemplateEnvKeyToCopy,
-        executeDialogEnabled,
+        lastTarget.testFramework,
     );
-    if (!executionSettings) {
+    if (!preparedExecution) {
         return;
     }
 
-    const managed = await ensureManagedLaunchConfig(
-        target,
-        executionSettings.generatedLaunchNamePrefix,
-        executionSettings.launchJsonPath,
-        commandTemplateEnvKeyToCopy,
-        executionSettings.managedTargetConfigurationLimit,
-        executionSettings.launchConfigurationTemplate,
-    );
+    const { managed, testFramework } = preparedExecution;
     const managedDebugConfig = managed.debugConfig as Record<string, unknown>;
     const managedRunEnvironment = await resolveManagedRunEnvironment(
         target,
@@ -105,7 +73,7 @@ export async function runLastFile(
     const workingDirectoryVariableContext = {
         workspaceFolderPath: managed.launchWorkspaceFolder.uri.fsPath,
         workspaceFolderName: managed.launchWorkspaceFolder.name,
-        namedWorkspaceFolderPaths: getNamedWorkspaceFolderPaths(),
+        namedWorkspaceFolderPaths: buildNamedWorkspaceFolderPaths(),
     };
 
     if (testFramework === "pytest") {

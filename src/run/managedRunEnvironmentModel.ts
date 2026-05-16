@@ -116,7 +116,7 @@ export function mergeManagedRunEnvironment(
     envFromFile: Record<string, string>,
     inlineEnv: unknown,
 ): ResolvedManagedRunEnvironment {
-    const inline = inlineEnv && typeof inlineEnv === "object" ? (inlineEnv as Record<string, unknown>) : {};
+    const inline = toPlainRecord(inlineEnv);
     const commandTemplateEnv: Record<string, unknown> = {
         ...envFromFile,
         ...inline,
@@ -146,4 +146,12 @@ export function mergeManagedRunEnvironment(
         commandTemplateEnv,
         processEnvOverrides,
     };
+}
+
+function toPlainRecord(value: unknown): Record<string, unknown> {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        return {};
+    }
+
+    return { ...(value as Record<string, unknown>) };
 }

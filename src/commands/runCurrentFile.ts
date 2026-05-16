@@ -1,6 +1,5 @@
 import * as vscode from "vscode";
 
-import { ensureManagedLaunchConfig } from "../launch/managedLaunchConfigs.js";
 import { resolveActivePythonTarget } from "../resolvePythonTarget.js";
 import {
     RUN_COMMAND_TEMPLATE,
@@ -12,20 +11,10 @@ import {
 import { resolveManagedRunEnvironment } from "../run/managedRunEnvironment.js";
 import { resolvePytestTargetForPosition } from "../run/pytestTarget.js";
 import { runPythonTarget } from "../run/runTask.js";
-import { isTestFile, resolveConfiguredTestFramework } from "../run/testFramework.js";
 import { resolveUnittestTargetForPosition } from "../run/unittestTarget.js";
 import type { LastTargetStore } from "../state/lastTargetStore.js";
 import type { TerminalRevealSetting } from "../types.js";
-import { resolveSettingsForExecution } from "./executeDialogSettings.js";
-
-function getNamedWorkspaceFolderPaths(): Record<string, string> {
-    const namedFolders: Record<string, string> = {};
-    for (const workspaceFolder of vscode.workspace.workspaceFolders ?? []) {
-        namedFolders[workspaceFolder.name] = workspaceFolder.uri.fsPath;
-    }
-
-    return namedFolders;
-}
+import { buildNamedWorkspaceFolderPaths, prepareManagedCommandExecution } from "./commandExecution.js";
 
 export async function runCurrentFile(
     lastTargetStore: LastTargetStore,
@@ -44,35 +33,20 @@ export async function runCurrentFile(
         return;
     }
 
-    const testFramework = isTestFile(target.fileBasename)
-        ? (resolveConfiguredTestFramework(target) ?? "pytest")
-        : undefined;
-    const commandTemplateEnvKeyToCopy = testFramework ? TEST_COMMAND_TEMPLATE_ENV_KEY : RUN_COMMAND_TEMPLATE_ENV_KEY;
-    const executionSettings = await resolveSettingsForExecution(
-        target,
-        {
-            generatedLaunchNamePrefix,
-            launchJsonPath,
-            managedTargetConfigurationLimit,
-            launchConfigurationTemplate,
-            runCommandTemplate: configuredRunCommandTemplate,
-            testCommandTemplate: configuredTestCommandTemplate,
-        },
-        commandTemplateEnvKeyToCopy,
+    const preparedExecution = await prepareManagedCommandExecution(target, {
+        generatedLaunchNamePrefix,
+        launchJsonPath,
+        managedTargetConfigurationLimit,
+        launchConfigurationTemplate,
+        runCommandTemplate: configuredRunCommandTemplate,
+        testCommandTemplate: configuredTestCommandTemplate,
         executeDialogEnabled,
-    );
-    if (!executionSettings) {
+    });
+    if (!preparedExecution) {
         return;
     }
 
-    const managed = await ensureManagedLaunchConfig(
-        target,
-        executionSettings.generatedLaunchNamePrefix,
-        executionSettings.launchJsonPath,
-        commandTemplateEnvKeyToCopy,
-        executionSettings.managedTargetConfigurationLimit,
-        executionSettings.launchConfigurationTemplate,
-    );
+    const { managed, testFramework } = preparedExecution;
     const managedDebugConfig = managed.debugConfig as Record<string, unknown>;
     const managedRunEnvironment = await resolveManagedRunEnvironment(
         target,
@@ -94,7 +68,7 @@ export async function runCurrentFile(
     const workingDirectoryVariableContext = {
         workspaceFolderPath: managed.launchWorkspaceFolder.uri.fsPath,
         workspaceFolderName: managed.launchWorkspaceFolder.name,
-        namedWorkspaceFolderPaths: getNamedWorkspaceFolderPaths(),
+        namedWorkspaceFolderPaths: buildNamedWorkspaceFolderPaths(),
     };
 
     if (testFramework === "pytest") {

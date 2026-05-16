@@ -14,6 +14,7 @@ export interface LaunchTargetDescriptor {
     workspaceFolderName?: string;
 }
 
+const DEFAULT_MANAGED_PREFIX = "Launchpad";
 const TARGET_MARKER_TYPE = "target";
 
 const CONFIG_KEY_ORDER = [
@@ -46,7 +47,7 @@ export interface RemoveManagedTargetLaunchResult {
 
 function resolveNamePrefix(prefix: string): string {
     const trimmed = prefix.trim();
-    return trimmed.length > 0 ? trimmed : "Launchpad";
+    return trimmed.length > 0 ? trimmed : DEFAULT_MANAGED_PREFIX;
 }
 
 function escapeRegExp(value: string): string {
@@ -77,17 +78,16 @@ export function getManagedLaunchName(descriptor: LaunchTargetDescriptor, prefix:
     return `${resolveNamePrefix(prefix)}: ${basename(descriptor.filePath)}`;
 }
 
-function getManagedPresentationGroup(prefix: string): string {
-    return resolveNamePrefix(prefix);
-}
-
-function getPresentation(config: Record<string, unknown>): Record<string, unknown> | undefined {
-    const presentation = config.presentation;
-    if (!presentation || typeof presentation !== "object") {
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
         return undefined;
     }
 
-    return presentation as Record<string, unknown>;
+    return value as Record<string, unknown>;
+}
+
+function getPresentation(config: Record<string, unknown>): Record<string, unknown> | undefined {
+    return asRecord(config.presentation);
 }
 
 function getPresentationGroup(config: Record<string, unknown>): string | undefined {
@@ -101,12 +101,13 @@ function isManagedTargetName(name: string, prefix: string): boolean {
     return managedNamePattern.test(name);
 }
 
-export function isManagedLaunchConfig(value: unknown, prefix = "Launchpad"): value is ManagedLaunchConfig {
-    if (!value || typeof value !== "object") {
+export function isManagedLaunchConfig(value: unknown, prefix = DEFAULT_MANAGED_PREFIX): value is ManagedLaunchConfig {
+    const config = asRecord(value);
+    if (!config) {
         return false;
     }
 
-    return getManagedType(value as Record<string, unknown>, prefix) !== undefined;
+    return getManagedType(config, prefix) !== undefined;
 }
 
 function getManagedType(config: Record<string, unknown>, prefix: string): typeof TARGET_MARKER_TYPE | undefined {
@@ -115,7 +116,7 @@ function getManagedType(config: Record<string, unknown>, prefix: string): typeof
         return undefined;
     }
 
-    const managedGroup = getManagedPresentationGroup(prefix);
+    const managedGroup = resolveNamePrefix(prefix);
     const presentationGroup = getPresentationGroup(config);
 
     if (isManagedTargetName(name, prefix) && presentationGroup === managedGroup) {
@@ -141,11 +142,12 @@ function resolveUniqueManagedLaunchName(existingConfigurations: readonly unknown
     const existingNames = new Set<string>();
 
     for (const candidate of existingConfigurations) {
-        if (!candidate || typeof candidate !== "object") {
+        const config = asRecord(candidate);
+        if (!config) {
             continue;
         }
 
-        const name = (candidate as Record<string, unknown>).name;
+        const name = config.name;
         if (typeof name === "string") {
             existingNames.add(name);
         }
@@ -168,15 +170,13 @@ export function hasManagedLaunchConfigForTarget(
     descriptor: LaunchTargetDescriptor,
     prefix: string,
 ): boolean {
-    return existingConfigurations.some(
-        (candidate) =>
-            !!candidate &&
-            typeof candidate === "object" &&
-            isManagedConfigForTarget(candidate as Record<string, unknown>, descriptor, prefix),
-    );
+    return existingConfigurations.some((candidate) => {
+        const config = asRecord(candidate);
+        return config ? isManagedConfigForTarget(config, descriptor, prefix) : false;
+    });
 }
 
-function normalizeLaunchConfigurationTemplate(value: unknown): Record<string, unknown> {
+function toRecord(value: unknown): Record<string, unknown> {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
         return {};
     }
@@ -197,7 +197,7 @@ function selectCommandTemplateEnv(
     env: unknown,
     commandTemplateEnvKeyToCopy: CommandTemplateEnvKey,
 ): Record<string, unknown> {
-    const normalized = env && typeof env === "object" ? { ...(env as Record<string, unknown>) } : {};
+    const normalized = toRecord(env);
     const selectedCommandValue = resolveTemplateCommandValue(normalized, commandTemplateEnvKeyToCopy);
 
     delete normalized[RUN_COMMAND_TEMPLATE_ENV_KEY];
@@ -225,7 +225,7 @@ function stripManagedMetadata(config: Record<string, unknown>): Record<string, u
 }
 
 function buildTargetTemplateBase(launchConfigurationTemplate: Record<string, unknown>): Record<string, unknown> {
-    const configuredOverrides = stripManagedMetadata(normalizeLaunchConfigurationTemplate(launchConfigurationTemplate));
+    const configuredOverrides = stripManagedMetadata(toRecord(launchConfigurationTemplate));
 
     delete configuredOverrides.name;
 
@@ -233,13 +233,13 @@ function buildTargetTemplateBase(launchConfigurationTemplate: Record<string, unk
 }
 
 function buildTargetPresentation(source: unknown, prefix: string): Record<string, unknown> {
-    const basePresentation = source && typeof source === "object" ? { ...(source as Record<string, unknown>) } : {};
+    const basePresentation = toRecord(source);
 
     delete basePresentation.hidden;
 
     return {
         ...basePresentation,
-        group: getManagedPresentationGroup(prefix),
+        group: resolveNamePrefix(prefix),
     };
 }
 
@@ -344,12 +344,12 @@ function trimManagedTargetsToLimit(
     const targetIndices: number[] = [];
 
     for (let index = 0; index < configurations.length; index += 1) {
-        const candidate = configurations[index] as unknown;
-        if (!candidate || typeof candidate !== "object") {
+        const config = asRecord(configurations[index] as unknown);
+        if (!config) {
             continue;
         }
 
-        if (getManagedType(candidate as Record<string, unknown>, prefix) === TARGET_MARKER_TYPE) {
+        if (getManagedType(config, prefix) === TARGET_MARKER_TYPE) {
             targetIndices.push(index);
         }
     }
@@ -371,11 +371,11 @@ export function removeManagedTargetLaunchConfigs(
     let removedCount = 0;
 
     for (const candidate of existingConfigurations) {
-        if (!candidate || typeof candidate !== "object") {
+        const config = asRecord(candidate);
+        if (!config) {
             continue;
         }
 
-        const config = candidate as Record<string, unknown>;
         if (getManagedType(config, prefix) === TARGET_MARKER_TYPE) {
             removedCount += 1;
             continue;

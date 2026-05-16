@@ -8,15 +8,13 @@ import {
 } from "../debug/debugBusyTerminal.js";
 import { buildPytestDebugConfig } from "../debug/pytestDebugConfig.js";
 import { buildUnittestDebugConfig } from "../debug/unittestDebugConfig.js";
-import { ensureManagedLaunchConfig } from "../launch/managedLaunchConfigs.js";
 import { ensurePythonExtension } from "../python/pythonExtension.js";
 import { resolveActivePythonTarget } from "../resolvePythonTarget.js";
-import { RUN_COMMAND_TEMPLATE_ENV_KEY, TEST_COMMAND_TEMPLATE_ENV_KEY } from "../run/commandTemplate.js";
 import { resolvePytestTargetForPosition } from "../run/pytestTarget.js";
-import { isTestFile, resolveConfiguredTestFramework } from "../run/testFramework.js";
 import { resolveUnittestTargetForPosition } from "../run/unittestTarget.js";
 import type { LastTargetStore } from "../state/lastTargetStore.js";
-import { resolveSettingsForExecution } from "./executeDialogSettings.js";
+import { prepareManagedCommandExecution } from "./commandExecution.js";
+import { formatDebugStartFailureMessage } from "./commandExecutionModel.js";
 
 /**
  * Debugs the active Python target.
@@ -42,35 +40,20 @@ export async function debugCurrentFile(
         return;
     }
 
-    const testFramework = isTestFile(target.fileBasename)
-        ? (resolveConfiguredTestFramework(target) ?? "pytest")
-        : undefined;
-    const commandTemplateEnvKeyToCopy = testFramework ? TEST_COMMAND_TEMPLATE_ENV_KEY : RUN_COMMAND_TEMPLATE_ENV_KEY;
-    const executionSettings = await resolveSettingsForExecution(
-        target,
-        {
-            generatedLaunchNamePrefix,
-            launchJsonPath,
-            managedTargetConfigurationLimit,
-            launchConfigurationTemplate,
-            runCommandTemplate,
-            testCommandTemplate,
-        },
-        commandTemplateEnvKeyToCopy,
+    const preparedExecution = await prepareManagedCommandExecution(target, {
+        generatedLaunchNamePrefix,
+        launchJsonPath,
+        managedTargetConfigurationLimit,
+        launchConfigurationTemplate,
+        runCommandTemplate,
+        testCommandTemplate,
         executeDialogEnabled,
-    );
-    if (!executionSettings) {
+    });
+    if (!preparedExecution) {
         return;
     }
 
-    const managed = await ensureManagedLaunchConfig(
-        target,
-        executionSettings.generatedLaunchNamePrefix,
-        executionSettings.launchJsonPath,
-        commandTemplateEnvKeyToCopy,
-        executionSettings.managedTargetConfigurationLimit,
-        executionSettings.launchConfigurationTemplate,
-    );
+    const { managed, testFramework } = preparedExecution;
     const isBusy = isDebugTargetBusy(target);
     if (isBusy && !debugOpenNewTerminalIfBusy) {
         await vscode.window.showInformationMessage(
@@ -80,6 +63,16 @@ export async function debugCurrentFile(
     }
 
     const openNewDebugTerminal = shouldOpenNewDebugTerminalIfBusy(target, debugOpenNewTerminalIfBusy);
+    const startDebugging = async (
+        launchWorkspaceFolder: vscode.WorkspaceFolder,
+        debugConfig: string | vscode.DebugConfiguration,
+        framework: "pytest" | "unittest" | undefined,
+    ): Promise<void> => {
+        const started = await startDebuggingWithBusyTracking(target, launchWorkspaceFolder, debugConfig);
+        if (!started) {
+            await vscode.window.showErrorMessage(formatDebugStartFailureMessage(target.fileBasename, framework));
+        }
+    };
 
     if (testFramework === "pytest") {
         const activePosition = vscode.window.activeTextEditor?.selection.active;
@@ -94,10 +87,7 @@ export async function debugCurrentFile(
             buildPytestDebugConfig(target, pytestSelection.testTarget, managed.debugConfig),
             openNewDebugTerminal,
         );
-        const started = await startDebuggingWithBusyTracking(target, target.workspaceFolder, debugConfig);
-        if (!started) {
-            await vscode.window.showErrorMessage(`Failed to start pytest debugging for ${target.fileBasename}.`);
-        }
+        await startDebugging(target.workspaceFolder, debugConfig, "pytest");
         return;
     }
 
@@ -119,21 +109,15 @@ export async function debugCurrentFile(
             ),
             openNewDebugTerminal,
         );
-        const started = await startDebuggingWithBusyTracking(target, target.workspaceFolder, debugConfig);
-        if (!started) {
-            await vscode.window.showErrorMessage(`Failed to start unittest debugging for ${target.fileBasename}.`);
-        }
+        await startDebugging(target.workspaceFolder, debugConfig, "unittest");
         return;
     }
 
     await lastTargetStore.set(target);
 
-    const started = await startDebuggingWithBusyTracking(
-        target,
+    await startDebugging(
         managed.launchWorkspaceFolder,
         withDebugInvocationSuffix(managed.debugConfig.name as string, openNewDebugTerminal, managed.debugConfig),
+        undefined,
     );
-    if (!started) {
-        await vscode.window.showErrorMessage(`Failed to start debugging for ${target.fileBasename}.`);
-    }
 }

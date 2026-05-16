@@ -389,3 +389,28 @@ void test("upsertManagedLaunchConfig trims oldest managed targets when limit is 
     assert.equal(names.includes("Launchpad: test_a.py"), false);
     assert.deepEqual(names, ["Launchpad: test_b.py", getManagedLaunchName(nextDescriptor, "Launchpad")]);
 });
+
+void test("upsertManagedLaunchConfig ignores array-shaped env and presentation in template", () => {
+    const updated = upsertManagedLaunchConfig([], descriptor, "Launchpad", RUN_COMMAND_TEMPLATE_ENV_KEY, 10, {
+        env: ["unexpected"],
+        presentation: ["unexpected"],
+    } as unknown as Record<string, unknown>);
+
+    const debugEnv = (updated.debugConfig.env as Record<string, unknown>) ?? {};
+    assert.equal(debugEnv[RUN_COMMAND_TEMPLATE_ENV_KEY], RUN_COMMAND_TEMPLATE);
+    assert.equal(Object.prototype.hasOwnProperty.call(debugEnv, "0"), false);
+    assert.deepEqual(updated.debugConfig.presentation, {
+        group: "Launchpad",
+    });
+});
+
+void test("upsertManagedLaunchConfig falls back when configured command template is blank", () => {
+    const updated = upsertManagedLaunchConfig([], descriptor, "Launchpad", RUN_COMMAND_TEMPLATE_ENV_KEY, 10, {
+        env: {
+            [RUN_COMMAND_TEMPLATE_ENV_KEY]: "   ",
+        },
+    });
+
+    const debugEnv = (updated.debugConfig.env as Record<string, unknown>) ?? {};
+    assert.equal(debugEnv[RUN_COMMAND_TEMPLATE_ENV_KEY], RUN_COMMAND_TEMPLATE);
+});

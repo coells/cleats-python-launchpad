@@ -86,3 +86,17 @@ void test("mergeManagedRunEnvironment merges envFile and inline env with inline 
     assert.equal(merged.processEnvOverrides.E, undefined);
     assert.equal(merged.processEnvOverrides.PYTHON_LAUNCHPAD_RUN_COMMAND, "python {script}");
 });
+
+void test("mergeManagedRunEnvironment ignores array-shaped inline env", () => {
+    const merged = mergeManagedRunEnvironment(
+        {
+            A: "from-file",
+        },
+        ["unexpected"] as unknown,
+    );
+
+    assert.equal(merged.commandTemplateEnv.A, "from-file");
+    assert.equal(merged.commandTemplateEnv["0"], undefined);
+    assert.equal(merged.processEnvOverrides.A, "from-file");
+    assert.equal(merged.processEnvOverrides["0"], undefined);
+});
