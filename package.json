@@ -2,7 +2,7 @@
     "name": "cleats-python-launchpad",
     "displayName": "Cleats: Python Launchpad",
     "description": "Run and debug the current or last Python file with minimal setup.",
-    "version": "0.1.4",
+    "version": "0.1.5",
     "publisher": "coells",
     "author": "Tomas Bouda",
     "license": "MIT",
@@ -61,14 +61,12 @@
             {
                 "command": "cleatsPythonLaunchpad.debugCurrentFile",
                 "key": "ctrl+shift+f9",
-                "mac": "ctrl+shift+f9",
-                "when": "editorTextFocus"
+                "mac": "ctrl+shift+f9"
             },
             {
                 "command": "cleatsPythonLaunchpad.runCurrentFile",
                 "key": "ctrl+shift+f10",
-                "mac": "ctrl+shift+f10",
-                "when": "editorTextFocus"
+                "mac": "ctrl+shift+f10"
             },
             {
                 "command": "cleatsPythonLaunchpad.debugLastFile",
@@ -81,6 +79,14 @@
                 "mac": "ctrl+f10"
             }
         ],
+        "configurationDefaults": {
+            "terminal.integrated.commandsToSkipShell": [
+                "cleatsPythonLaunchpad.debugCurrentFile",
+                "cleatsPythonLaunchpad.runCurrentFile",
+                "cleatsPythonLaunchpad.debugLastFile",
+                "cleatsPythonLaunchpad.runLastFile"
+            ]
+        },
         "configuration": {
             "title": "Cleats: Python Launchpad",
             "properties": {

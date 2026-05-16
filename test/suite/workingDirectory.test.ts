@@ -41,6 +41,46 @@ void test("resolveRunWorkingDirectory resolves workspaceFolder variable", () => 
     assert.equal(resolveRunWorkingDirectory(target, "${workspaceFolder}/python-samples"), "/workspace/python-samples");
 });
 
+void test("resolveRunWorkingDirectory resolves named workspaceFolder variables", () => {
+    const target = makeTarget();
+
+    assert.equal(
+        resolveRunWorkingDirectory(target, "${workspaceFolder:project_a}/src", {
+            workspaceFolderPath: "/workspace/common",
+            workspaceFolderName: "common",
+            namedWorkspaceFolderPaths: {
+                project_a: "/workspace/project_a",
+                common: "/workspace/common",
+            },
+        }),
+        "/workspace/project_a/src",
+    );
+});
+
+void test("resolveRunWorkingDirectory resolves ${workspaceFolder} from launch workspace context", () => {
+    const target = makeTarget({
+        workspaceFolder: {
+            uri: {
+                fsPath: "/workspace/project_a",
+            },
+            name: "project_a",
+            index: 0,
+        } as unknown as ResolvedPythonTarget["workspaceFolder"],
+    });
+
+    assert.equal(
+        resolveRunWorkingDirectory(target, "${workspaceFolder}/../project_a/src", {
+            workspaceFolderPath: "/workspace/common",
+            workspaceFolderName: "common",
+            namedWorkspaceFolderPaths: {
+                common: "/workspace/common",
+                project_a: "/workspace/project_a",
+            },
+        }),
+        "/workspace/project_a/src",
+    );
+});
+
 void test("resolveRunWorkingDirectory resolves relative paths from workspace root", () => {
     const target = makeTarget();
 

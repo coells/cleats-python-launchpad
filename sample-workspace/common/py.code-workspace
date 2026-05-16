@@ -14,5 +14,10 @@
         "workbench.colorCustomizations": {
             "titleBar.activeBackground": "#efef8f",
         },
+
+        // Cleats Python Launchpad settings
+        "cleatsPythonLaunchpad.launchJsonPath": "/Users/tomas/ide/projects/cleats-python-launchpad/sample-workspace/common/.vscode/launch.json",
+        "cleatsPythonLaunchpad.runCommandTemplate": "uv run python {script}",
+        "cleatsPythonLaunchpad.testCommandTemplate": "uv run python -m pytest {testTarget}",
     },
 }

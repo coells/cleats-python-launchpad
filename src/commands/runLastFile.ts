@@ -16,6 +16,15 @@ import type { LastTargetStore } from "../state/lastTargetStore.js";
 import type { TerminalRevealSetting } from "../types.js";
 import { resolveSettingsForExecution } from "./executeDialogSettings.js";
 
+function getNamedWorkspaceFolderPaths(): Record<string, string> {
+    const namedFolders: Record<string, string> = {};
+    for (const workspaceFolder of vscode.workspace.workspaceFolders ?? []) {
+        namedFolders[workspaceFolder.name] = workspaceFolder.uri.fsPath;
+    }
+
+    return namedFolders;
+}
+
 export async function runLastFile(
     lastTargetStore: LastTargetStore,
     terminalReveal: TerminalRevealSetting,
@@ -93,6 +102,11 @@ export async function runLastFile(
         TEST_COMMAND_TEMPLATE,
     );
     const managedCwd = managedDebugConfig.cwd;
+    const workingDirectoryVariableContext = {
+        workspaceFolderPath: managed.launchWorkspaceFolder.uri.fsPath,
+        workspaceFolderName: managed.launchWorkspaceFolder.name,
+        namedWorkspaceFolderPaths: getNamedWorkspaceFolderPaths(),
+    };
 
     if (testFramework === "pytest") {
         const pytestTarget = lastTarget.testTarget ?? target.filePath;
@@ -106,6 +120,7 @@ export async function runLastFile(
         await runPythonTarget(target, testCommandTemplate, terminalReveal, runOpenNewTerminalIfBusy, {
             configuredCwd: managedCwd,
             envOverrides: managedRunEnvironment.processEnvOverrides,
+            workingDirectoryVariableContext,
             contextOverrides: {
                 testFunction: pytestFunction,
                 testTarget: pytestTarget,
@@ -126,6 +141,7 @@ export async function runLastFile(
         await runPythonTarget(target, testCommandTemplate, terminalReveal, runOpenNewTerminalIfBusy, {
             configuredCwd: managedCwd,
             envOverrides: managedRunEnvironment.processEnvOverrides,
+            workingDirectoryVariableContext,
             contextOverrides: {
                 testFunction: unittestFunction,
                 testTarget: unittestTarget,
@@ -138,5 +154,6 @@ export async function runLastFile(
     await runPythonTarget(target, scriptCommandTemplate, terminalReveal, runOpenNewTerminalIfBusy, {
         configuredCwd: managedCwd,
         envOverrides: managedRunEnvironment.processEnvOverrides,
+        workingDirectoryVariableContext,
     });
 }

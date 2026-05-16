@@ -125,35 +125,37 @@ Use `Remove Managed Target Configurations` to delete all managed target entries 
 
 ## Release History
 
+### 0.1.5 (2026-05-16)
+
+- Fixed run/debug behavior in multi-root workspaces so Launchpad resolves and launches from the correct target workspace folder.
+- Added support for named workspace-folder variables in `cwd` (for example `${workspaceFolder:project_a}`) when running targets.
+- Improved default keybinding behavior by skipping Launchpad commands in the integrated shell, ensuring shortcuts execute the extension commands reliably.
+
 ### 0.1.4 (2026-05-14)
 
-- Added dialog support for first-run execution of scripts.
-- Improved configuration settings.
-- Bug fixes and internal refactors.
-- Drop legacy behavior.
+- Added setup-dialog support for first-run script execution.
+- Improved configuration behavior for managed launch flows.
+- Removed legacy behavior to keep execution paths deterministic.
 
 ### 0.1.3 (2026-05-04)
 
-- Switched run/test command templates from user settings to fixed internal templates.
 - Added managed template env keys `PYTHON_LAUNCHPAD_RUN_COMMAND` and `PYTHON_LAUNCHPAD_TEST_COMMAND`.
 - Updated run/debug flows to resolve execution commands from managed target `env` values with safe fallbacks.
-- And much more...
+- Standardized command-template behavior for more predictable target execution.
 
 ### 0.1.2 (2026-05-02)
 
-- Consolidated command templates for running scripts, pytest, and unittest into a single testCommandTemplate.
-- Updated function signatures and internal logic in runCurrentFile and runLastFile to accommodate the new testCommandTemplate.
-- Introduced a new debugBusyTerminal module to manage debug session states and terminal behavior.
-- And much more...
+- Consolidated script and test command handling into a unified `testCommandTemplate` flow.
+- Updated run-current and run-last command logic to support the unified template behavior.
+- Added debug-busy terminal tracking to improve concurrent debug session handling.
 
 ### 0.1.1 (2026-05-01)
 
 - Added terminal-tail run summaries, including exit code and runtime for every run.
 - Added ANSI coloring for terminal-tail summaries (green success, red failure).
-- Tightened VSIX packaging via `.vscodeignore` to keep publish artifacts runtime-focused.
+- Tightened VSIX packaging to keep publish artifacts runtime-focused.
 
 ### 0.1.0 (2026-04-25)
 
-- Initial release candidate for Cleats: Python Launchpad.
 - Added run/debug commands for current and last Python file targets.
-- Updated development docs for release metadata checks.
+- Established the initial managed launch configuration workflow.

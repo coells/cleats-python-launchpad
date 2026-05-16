@@ -18,6 +18,15 @@ import type { LastTargetStore } from "../state/lastTargetStore.js";
 import type { TerminalRevealSetting } from "../types.js";
 import { resolveSettingsForExecution } from "./executeDialogSettings.js";
 
+function getNamedWorkspaceFolderPaths(): Record<string, string> {
+    const namedFolders: Record<string, string> = {};
+    for (const workspaceFolder of vscode.workspace.workspaceFolders ?? []) {
+        namedFolders[workspaceFolder.name] = workspaceFolder.uri.fsPath;
+    }
+
+    return namedFolders;
+}
+
 export async function runCurrentFile(
     lastTargetStore: LastTargetStore,
     terminalReveal: TerminalRevealSetting,
@@ -82,6 +91,11 @@ export async function runCurrentFile(
         TEST_COMMAND_TEMPLATE,
     );
     const managedCwd = managedDebugConfig.cwd;
+    const workingDirectoryVariableContext = {
+        workspaceFolderPath: managed.launchWorkspaceFolder.uri.fsPath,
+        workspaceFolderName: managed.launchWorkspaceFolder.name,
+        namedWorkspaceFolderPaths: getNamedWorkspaceFolderPaths(),
+    };
 
     if (testFramework === "pytest") {
         const activePosition = vscode.window.activeTextEditor?.selection.active;
@@ -95,6 +109,7 @@ export async function runCurrentFile(
         await runPythonTarget(target, testCommandTemplate, terminalReveal, runOpenNewTerminalIfBusy, {
             configuredCwd: managedCwd,
             envOverrides: managedRunEnvironment.processEnvOverrides,
+            workingDirectoryVariableContext,
             contextOverrides: {
                 testFunction: pytestSelection.testFunction,
                 testTarget: pytestSelection.testTarget,
@@ -115,6 +130,7 @@ export async function runCurrentFile(
         await runPythonTarget(target, testCommandTemplate, terminalReveal, runOpenNewTerminalIfBusy, {
             configuredCwd: managedCwd,
             envOverrides: managedRunEnvironment.processEnvOverrides,
+            workingDirectoryVariableContext,
             contextOverrides: {
                 testFunction: unittestSelection.unittestFilter ?? unittestSelection.testFunction,
                 testTarget: unittestSelection.testTarget,
@@ -127,5 +143,6 @@ export async function runCurrentFile(
     await runPythonTarget(target, scriptCommandTemplate, terminalReveal, runOpenNewTerminalIfBusy, {
         configuredCwd: managedCwd,
         envOverrides: managedRunEnvironment.processEnvOverrides,
+        workingDirectoryVariableContext,
     });
 }

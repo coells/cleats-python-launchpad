@@ -94,7 +94,7 @@ export async function debugCurrentFile(
             buildPytestDebugConfig(target, pytestSelection.testTarget, managed.debugConfig),
             openNewDebugTerminal,
         );
-        const started = await startDebuggingWithBusyTracking(target, managed.launchWorkspaceFolder, debugConfig);
+        const started = await startDebuggingWithBusyTracking(target, target.workspaceFolder, debugConfig);
         if (!started) {
             await vscode.window.showErrorMessage(`Failed to start pytest debugging for ${target.fileBasename}.`);
         }
@@ -119,7 +119,7 @@ export async function debugCurrentFile(
             ),
             openNewDebugTerminal,
         );
-        const started = await startDebuggingWithBusyTracking(target, managed.launchWorkspaceFolder, debugConfig);
+        const started = await startDebuggingWithBusyTracking(target, target.workspaceFolder, debugConfig);
         if (!started) {
             await vscode.window.showErrorMessage(`Failed to start unittest debugging for ${target.fileBasename}.`);
         }

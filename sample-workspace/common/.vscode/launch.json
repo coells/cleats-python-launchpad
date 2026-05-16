@@ -1,3 +1,49 @@
 {
-    "configurations": []
+    "configurations": [
+        {
+            "name": "Launchpad: succ.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "/Users/tomas/ide/projects/cleats-python-launchpad/sample-workspace/project_a/src/succ.py",
+            "cwd": "${workspaceFolder:project_a}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHON_LAUNCHPAD_RUN_COMMAND": "uv run python {script}"
+            },
+            "presentation": {
+                "group": "Launchpad"
+            }
+        },
+        {
+            "name": "Launchpad: fail.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "/Users/tomas/ide/projects/cleats-python-launchpad/sample-workspace/project_a/src/fail.py",
+            "cwd": "${workspaceFolder:project_a}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHON_LAUNCHPAD_RUN_COMMAND": "uv run python {script}"
+            },
+            "presentation": {
+                "group": "Launchpad"
+            }
+        },
+        {
+            "name": "Launchpad: test_quick.py",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "/Users/tomas/ide/projects/cleats-python-launchpad/sample-workspace/project_a/src/test_quick.py",
+            "cwd": "${workspaceFolder:project_a}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHON_LAUNCHPAD_TEST_COMMAND": "uv run python -m pytest {testTarget}"
+            },
+            "presentation": {
+                "group": "Launchpad"
+            }
+        }
+    ]
 }

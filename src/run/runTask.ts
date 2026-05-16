@@ -12,7 +12,7 @@ import {
     buildCommandTemplateContext,
     expandCommandTemplate,
 } from "./commandTemplate.js";
-import { resolveRunWorkingDirectory } from "./workingDirectory.js";
+import { type RunWorkingDirectoryVariableContext, resolveRunWorkingDirectory } from "./workingDirectory.js";
 
 const RUN_WITH_SUMMARY_RUNTIME_PATH = fileURLToPath(new URL("./runWithSummaryRuntime.js", import.meta.url));
 const activeCleatsRunTargets = new Map<string, number>();
@@ -120,10 +120,15 @@ export async function runPythonTarget(
         configuredCwd?: unknown;
         contextOverrides?: CommandTemplateContextOverrides;
         envOverrides?: Record<string, string | null>;
+        workingDirectoryVariableContext?: RunWorkingDirectoryVariableContext;
     } = {},
 ): Promise<void> {
     const contextOverrides = options.contextOverrides ?? {};
-    const resolvedCwd = resolveRunWorkingDirectory(target, options.configuredCwd);
+    const resolvedCwd = resolveRunWorkingDirectory(
+        target,
+        options.configuredCwd,
+        options.workingDirectoryVariableContext,
+    );
     const openNewTerminal = runOpenNewTerminalIfBusy && hasActiveCleatsRunTask(target.filePath);
     const taskName = openNewTerminal ? `Run ${target.fileBasename} (${Date.now()})` : `Run ${target.fileBasename}`;
     const commandLine = expandCommandTemplate(commandTemplate, buildCommandTemplateContext(target, contextOverrides));
